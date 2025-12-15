@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tributary Pro v2.0 | Structural Load Analysis</title>
+    <style>
+        /* ========== RESET & VARIABLES ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00d4ff;
+            --secondary: #7c3aed;
+            --dark: #0f1419;
+            --darker: #080b0e;
+            --glass: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0d1117 100%);
+            min-height: 100vh;
+            color: #e6edf3;
+            overflow-x: hidden;
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .logo h1 span {
+            color: var(--primary);
+        }
+
+        .version-badge {
+            background: var(--secondary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* ========== MAIN LAYOUT ========== */
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            height: calc(100vh - 60px);
+        }
+
+        .panel {
+            background: var(--glass);
+            border-right: 1px solid var(--border);
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .panel:last-child {
+            border-right: none;
+            border-left: 1px solid var(--border);
+        }
+
+        .panel-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ========== INPUT GROUPS ========== */
+        .param-group {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .param-group h3 {
+            font-size: 0.8rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .param-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .param-item label {
+            display: block;
+            font-size: 0.7rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .param-item input,
+        .param-item select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+
+        .param-item input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* ========== SPAN INPUTS ========== */
+        .span-container {
+            margin-bottom: 12px;
+        }
+
+        .span-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .span-header h4 {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .add-span-btn {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .span-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+
+        .span-row input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px 8px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+
+        .span-row .remove-btn {
+            background: rgba(255, 100, 100, 0.3);
+            color: #ff6b6b;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* ========== CANVAS AREA ========== */
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            background: var(--darker);
+        }
+
+        .canvas-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: #8b949e;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .tool-btn.active {
+            background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #mainCanvas {
+            background: #0a0d10;
+            cursor: crosshair;
+        }
+
+        /* ========== RESULTS PANEL ========== */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .summary-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-card .label {
+            font-size: 0.65rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .summary-card .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .summary-card .unit {
+            font-size: 0.65rem;
+            color: #8b949e;
+        }
+
+        /* ========== RESULTS TABLE ========== */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+        }
+
+        .results-table th {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            text-align: left;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .results-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .results-table tr:hover {
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        /* ========== BUTTONS ========== */
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        /* ========== LOAD PATH INDICATOR ========== */
+        .load-path {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(0, 212, 255, 0.1));
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .load-path h4 {
+            color: var(--success);
+            font-size: 0.75rem;
+            margin-bottom: 6px;
+        }
+
+        .load-path .path {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .load-path .arrow {
+            color: var(--primary);
+            margin: 0 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- ========== HEADER ========== -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">📐</div>
+            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.0</span></h1>
+        </div>
+        <div class="header-actions">
+            <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
+            <button class="tool-btn" onclick="exportResults()">📤 Export</button>
+        </div>
+    </header>
+
+    <!-- ========== MAIN LAYOUT ========== -->
+    <div class="app-container">
+        <!-- ========== LEFT PANEL: INPUTS ========== -->
+        <div class="panel">
+            <div class="panel-header">📥 Input Parameters</div>
+
+            <!-- Load Path Indicator -->
+            <div class="load-path">
+                <h4>✅ v2.0 Load Path (Correct)</h4>
+                <div class="path">
+                    SLAB <span class="arrow">→</span>
+                    BEAMS <span class="arrow">→</span>
+                    COLUMNS
+                </div>
+            </div>
+
+            <!-- Grid Spans -->
+            <div class="param-group">
+                <h3>📏 X-Direction Spans (m)</h3>
+                <div id="xSpansContainer" class="span-container"></div>
+                <button class="add-span-btn" onclick="addSpan('x')">+ Add X Span</button>
+            </div>
+
+            <div class="param-group">
+                <h3>📐 Y-Direction Spans (m)</h3>
+                <div id="ySpansContainer" class="span-container"></div>
+                <button class="add-span-btn" onclick="addSpan('y')">+ Add Y Span</button>
+            </div>
+
+            <!-- Load Parameters -->
+            <div class="param-group">
+                <h3>⬇️ Load Parameters</h3>
+                <div class="param-grid">
+                    <div class="param-item">
+                        <!-- DL_super: superimposed dead load (kPa), EXCLUDING slab self-weight -->
+                        <label>DL Super (kPa) <span style="font-size:0.6rem;color:#f59e0b"
+                                title="Finishes, partitions, ceiling - NOT slab weight">ⓘ</span></label>
+                        <input type="number" id="dlSuper" value="2.0" step="0.5" min="0">
+                    </div>
+                    <div class="param-item">
+                        <label>Live Load (kPa)</label>
+                        <input type="number" id="liveLoad" value="2.0" step="0.5" min="0">
+                    </div>
+                    <div class="param-item">
+                        <label>Slab Thickness (mm)</label>
+                        <input type="number" id="slabThickness" value="150" step="10" min="100">
+                    </div>
+                    <div class="param-item">
+                        <label>Floors</label>
+                        <input type="number" id="numFloors" value="3" step="1" min="1" max="50">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <button class="action-btn" onclick="calculate()">
+                🔄 Calculate Loads
+            </button>
+        </div>
+
+        <!-- ========== CENTER: CANVAS ========== -->
+        <div class="canvas-container">
+            <div class="canvas-toolbar">
+                <button class="tool-btn active" id="selectTool">🔍 Select</button>
+                <button class="tool-btn" onclick="zoomIn()">➕ Zoom In</button>
+                <button class="tool-btn" onclick="zoomOut()">➖ Zoom Out</button>
+                <button class="tool-btn" onclick="fitView()">⊡ Fit</button>
+                <button class="tool-btn" id="toggleLabels" onclick="toggleLabels()">🏷️ Labels</button>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="mainCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- ========== RIGHT PANEL: RESULTS ========== -->
+        <div class="panel">
+            <div class="panel-header">📊 Results</div>
+
+            <!-- Summary Cards -->
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="label">Total Slab Area</div>
+                    <div class="value" id="totalArea">0</div>
+                    <div class="unit">m²</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Factored Load</div>
+                    <div class="value" id="factoredLoad">0</div>
+                    <div class="unit">kPa</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Total/Floor</div>
+                    <div class="value" id="totalPerFloor">0</div>
+                    <div class="unit">kN</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Max Column</div>
+                    <div class="value" id="maxColumn">0</div>
+                    <div class="unit">kN</div>
+                </div>
+            </div>
+
+            <!-- Column Results Table -->
+            <div class="param-group">
+                <h3>🏛️ Column Loads (Per Floor)</h3>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Load (kN)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="columnResultsBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Beam Results -->
+            <div class="param-group">
+                <h3>📏 Beam Loads</h3>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Beam</th>
+                                <th>w (kN/m)</th>
+                                <th>R (kN)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="beamResultsBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+        // ========================================
+        // TRIBUTARY PRO v2.0 - CORE ENGINE
+        // ========================================
+        // Load Path: SLAB → BEAMS → COLUMNS
+        // Per Lum's Refined Spec (Dec 15, 2025)
+        // ========================================
+
+        // ========== STATE ==========
+        const state = {
+            xSpans: [4.0, 4.0],      // X-direction bay sizes (m)
+            ySpans: [5.0, 5.0],      // Y-direction bay sizes (m)
+
+            // Load parameters
+            dlSuper: 2.0,            // Superimposed dead load (kPa) - NOT slab weight
+            liveLoad: 2.0,           // Live load (kPa)
+            slabThickness: 150,      // mm
+            numFloors: 3,
+
+            // Generated data
+            columns: [],             // Column objects
+            beams: [],               // Beam objects
+            slabs: [],               // Slab panel objects
+
+            // View state
+            scale: 50,
+            offsetX: 100,
+            offsetY: 100,
+            showLabels: true
+        };
+
+        // ========== CANVAS SETUP ==========
+        let canvas, ctx;
+
+        function initCanvas() {
+            canvas = document.getElementById('mainCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+        }
+
+        function resizeCanvas() {
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
+            draw();
+        }
+
+        // ========== SPAN UI ==========
+        function renderSpans() {
+            renderSpanInputs('x', state.xSpans, 'xSpansContainer');
+            renderSpanInputs('y', state.ySpans, 'ySpansContainer');
+        }
+
+        function renderSpanInputs(dir, spans, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            spans.forEach((span, i) => {
+                const row = document.createElement('div');
+                row.className = 'span-row';
+                row.innerHTML = `
+                    <span style="color:#8b949e;font-size:0.7rem;width:30px;">${dir.toUpperCase()}${i + 1}</span>
+                    <input type="number" value="${span}" step="0.5" min="1" max="20"
+                           onchange="updateSpan('${dir}', ${i}, this.value)">
+                    <button class="remove-btn" onclick="removeSpan('${dir}', ${i})" 
+                            ${spans.length <= 1 ? 'disabled' : ''}>×</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function updateSpan(dir, index, value) {
+            const spans = dir === 'x' ? state.xSpans : state.ySpans;
+            spans[index] = parseFloat(value) || 4.0;
+            calculate();
+        }
+
+        function addSpan(dir) {
+            const spans = dir === 'x' ? state.xSpans : state.ySpans;
+            spans.push(4.0);
+            renderSpans();
+            calculate();
+        }
+
+        function removeSpan(dir, index) {
+            const spans = dir === 'x' ? state.xSpans : state.ySpans;
+            if (spans.length > 1) {
+                spans.splice(index, 1);
+                renderSpans();
+                calculate();
+            }
+        }
+
+        // ========== CORE CALCULATIONS ==========
+
+        /**
+         * Main calculation function
+         * Implements: SLAB → BEAMS → COLUMNS load path
+         */
+        function calculate() {
+            // Read input values
+            state.dlSuper = parseFloat(document.getElementById('dlSuper').value) || 2.0;
+            state.liveLoad = parseFloat(document.getElementById('liveLoad').value) || 2.0;
+            state.slabThickness = parseFloat(document.getElementById('slabThickness').value) || 150;
+            state.numFloors = parseInt(document.getElementById('numFloors').value) || 3;
+
+            // Step 1: Generate grid coordinates
+            generateGrid();
+
+            // Step 2: Generate slab panels
+            generateSlabs();
+
+            // Step 3: Calculate factored load
+            // p_u = 1.2 * (DL_super + slab_weight) + 1.6 * LL
+            const slabWeight = 24 * (state.slabThickness / 1000); // kN/m² = kPa
+            const pu = 1.2 * (state.dlSuper + slabWeight) + 1.6 * state.liveLoad;
+
+            // Step 4: Generate beams and calculate tributary widths
+            generateBeams(pu);
+
+            // Step 5: Calculate beam reactions
+            calculateBeamReactions();
+
+            // Step 6: Calculate column loads (sum of beam reactions)
+            calculateColumnLoads();
+
+            // Update UI
+            updateResults(pu);
+            draw();
+        }
+
+        /**
+         * Step 1: Generate grid from spans
+         * Creates absolute coordinates for column positions
+         */
+        function generateGrid() {
+            // Build X coordinates
+            const xCoords = [0];
+            for (let span of state.xSpans) {
+                xCoords.push(xCoords[xCoords.length - 1] + span);
+            }
+
+            // Build Y coordinates
+            const yCoords = [0];
+            for (let span of state.ySpans) {
+                yCoords.push(yCoords[yCoords.length - 1] + span);
+            }
+
+            // Generate columns at intersections
+            state.columns = [];
+            const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Skip I and O
+
+            for (let yi = 0; yi < yCoords.length; yi++) {
+                for (let xi = 0; xi < xCoords.length; xi++) {
+                    const id = `${letters[xi]}${yi + 1}`;
+
+                    // Determine column type
+                    const isCorner = (xi === 0 || xi === xCoords.length - 1) &&
+                        (yi === 0 || yi === yCoords.length - 1);
+                    const isEdge = !isCorner && (xi === 0 || xi === xCoords.length - 1 ||
+                        yi === 0 || yi === yCoords.length - 1);
+
+                    let type = 'interior';
+                    if (isCorner) type = 'corner';
+                    else if (isEdge) type = 'edge';
+
+                    state.columns.push({
+                        id,
+                        x: xCoords[xi],
+                        y: yCoords[yi],
+                        xi, yi,
+                        type,
+                        loadPerFloor: 0,
+                        totalLoad: 0,
+                        connectedBeams: [] // Will store beam IDs
+                    });
+                }
+            }
+        }
+
+        /**
+         * Step 2: Generate slab panels
+         */
+        function generateSlabs() {
+            state.slabs = [];
+            const xCoords = [0];
+            for (let span of state.xSpans) xCoords.push(xCoords[xCoords.length - 1] + span);
+            const yCoords = [0];
+            for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
+
+            for (let yi = 0; yi < state.ySpans.length; yi++) {
+                for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    const lx = state.xSpans[xi]; // Short span
+                    const ly = state.ySpans[yi]; // Long span
+
+                    // Check if 2-way (ratio < 2)
+                    const ratio = Math.max(lx, ly) / Math.min(lx, ly);
+                    const isTwoWay = ratio < 2;
+
+                    state.slabs.push({
+                        id: `S${yi * state.xSpans.length + xi + 1}`,
+                        x1: xCoords[xi],
+                        y1: yCoords[yi],
+                        x2: xCoords[xi + 1],
+                        y2: yCoords[yi + 1],
+                        lx, ly,
+                        area: lx * ly,
+                        isTwoWay,
+                        xi, yi
+                    });
+                }
+            }
+        }
+
+        /**
+         * Step 3 & 4: Generate beams and calculate tributary widths
+         * For 2-way slabs: Use 45° rule for triangular/trapezoidal distribution
+         * For simplicity in v2.0: Convert to equivalent uniform load
+         */
+        function generateBeams(pu) {
+            state.beams = [];
+
+            // X-direction beams (horizontal, span in X)
+            const xCoords = [0];
+            for (let span of state.xSpans) xCoords.push(xCoords[xCoords.length - 1] + span);
+            const yCoords = [0];
+            for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
+
+            // Generate X-direction beams (along gridlines in Y direction)
+            for (let yi = 0; yi < yCoords.length; yi++) {
+                for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    const beamSpan = state.xSpans[xi];
+                    const beamId = `BX-${yi + 1}-${xi + 1}`;
+
+                    // Calculate tributary width for this beam
+                    // Gets triangular tributary from 2-way slab (45° rule)
+                    let tributaryArea = 0;
+
+                    // From slab below (if exists)
+                    if (yi > 0) {
+                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi - 1);
+                        if (slab && slab.isTwoWay) {
+                            // Triangular: area = lx * (lx/2) / 2 = lx²/4 per side
+                            // But since beam gets triangle from one slab side
+                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
+                            tributaryArea += slab.lx * triHeight / 2;
+                        }
+                    }
+
+                    // From slab above (if exists)
+                    if (yi < state.ySpans.length) {
+                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi);
+                        if (slab && slab.isTwoWay) {
+                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
+                            tributaryArea += slab.lx * triHeight / 2;
+                        }
+                    }
+
+                    // Equivalent uniform load
+                    const tributaryWidth = tributaryArea / beamSpan;
+                    const w = pu * tributaryWidth; // kN/m
+
+                    state.beams.push({
+                        id: beamId,
+                        direction: 'X',
+                        xi, yi,
+                        x1: xCoords[xi],
+                        y1: yCoords[yi],
+                        x2: xCoords[xi + 1],
+                        y2: yCoords[yi],
+                        span: beamSpan,
+                        tributaryWidth,
+                        tributaryArea,
+                        w,
+                        Rleft: 0,
+                        Rright: 0
+                    });
+                }
+            }
+
+            // Generate Y-direction beams (along gridlines in X direction)
+            for (let xi = 0; xi < xCoords.length; xi++) {
+                for (let yi = 0; yi < state.ySpans.length; yi++) {
+                    const beamSpan = state.ySpans[yi];
+                    const beamId = `BY-${xi + 1}-${yi + 1}`;
+
+                    let tributaryArea = 0;
+
+                    // From slab left (if exists)
+                    if (xi > 0) {
+                        const slab = state.slabs.find(s => s.xi === xi - 1 && s.yi === yi);
+                        if (slab && slab.isTwoWay) {
+                            // Trapezoidal for long direction
+                            // Area = (top + bottom) * height / 2
+                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
+                            const trapBase = slab.ly;
+                            const trapTop = slab.ly - 2 * triHeight;
+                            if (trapTop > 0) {
+                                // Trapezoidal
+                                tributaryArea += (trapBase + trapTop) * triHeight / 2;
+                            } else {
+                                // Full triangle (when lx >= ly)
+                                tributaryArea += slab.ly * triHeight / 2;
+                            }
+                        }
+                    }
+
+                    // From slab right (if exists)
+                    if (xi < state.xSpans.length) {
+                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi);
+                        if (slab && slab.isTwoWay) {
+                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
+                            const trapBase = slab.ly;
+                            const trapTop = slab.ly - 2 * triHeight;
+                            if (trapTop > 0) {
+                                tributaryArea += (trapBase + trapTop) * triHeight / 2;
+                            } else {
+                                tributaryArea += slab.ly * triHeight / 2;
+                            }
+                        }
+                    }
+
+                    const tributaryWidth = tributaryArea / beamSpan;
+                    const w = pu * tributaryWidth;
+
+                    state.beams.push({
+                        id: beamId,
+                        direction: 'Y',
+                        xi, yi,
+                        x1: xCoords[xi],
+                        y1: yCoords[yi],
+                        x2: xCoords[xi],
+                        y2: yCoords[yi + 1],
+                        span: beamSpan,
+                        tributaryWidth,
+                        tributaryArea,
+                        w,
+                        Rleft: 0,
+                        Rright: 0
+                    });
+                }
+            }
+        }
+
+        /**
+         * Step 5: Calculate beam reactions
+         * For uniform load: R_left = R_right = w * L / 2
+         */
+        function calculateBeamReactions() {
+            for (let beam of state.beams) {
+                // Simply supported beam with uniform load
+                // R = w * L / 2
+                beam.Rleft = beam.w * beam.span / 2;
+                beam.Rright = beam.w * beam.span / 2;
+            }
+        }
+
+        /**
+         * Step 6: Calculate column loads
+         * Column load = Sum of all beam reactions at that column
+         */
+        function calculateColumnLoads() {
+            // Reset column loads
+            for (let col of state.columns) {
+                col.loadPerFloor = 0;
+                col.connectedBeams = [];
+            }
+
+            // Sum beam reactions to columns
+            for (let beam of state.beams) {
+                // Find columns at beam ends
+                let colLeft, colRight;
+
+                if (beam.direction === 'X') {
+                    // X beam: connects columns at same yi, adjacent xi
+                    colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
+                    colRight = state.columns.find(c => c.xi === beam.xi + 1 && c.yi === beam.yi);
+                } else {
+                    // Y beam: connects columns at same xi, adjacent yi
+                    colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
+                    colRight = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi + 1);
+                }
+
+                if (colLeft) {
+                    colLeft.loadPerFloor += beam.Rleft;
+                    colLeft.connectedBeams.push(beam.id);
+                }
+                if (colRight) {
+                    colRight.loadPerFloor += beam.Rright;
+                    colRight.connectedBeams.push(beam.id);
+                }
+            }
+
+            // Calculate total load (sum across floors, not multiply!)
+            for (let col of state.columns) {
+                // Each floor has same load pattern
+                col.totalLoad = col.loadPerFloor * state.numFloors;
+            }
+        }
+
+        // ========== UI UPDATES ==========
+        function updateResults(pu) {
+            // Total area
+            const totalArea = state.slabs.reduce((sum, s) => sum + s.area, 0);
+            document.getElementById('totalArea').textContent = totalArea.toFixed(1);
+
+            // Factored load
+            document.getElementById('factoredLoad').textContent = pu.toFixed(2);
+
+            // Total per floor
+            const totalPerFloor = state.columns.reduce((sum, c) => sum + c.loadPerFloor, 0);
+            document.getElementById('totalPerFloor').textContent = totalPerFloor.toFixed(0);
+
+            // Max column
+            const maxCol = Math.max(...state.columns.map(c => c.loadPerFloor));
+            document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
+
+            // Column table
+            const colBody = document.getElementById('columnResultsBody');
+            colBody.innerHTML = state.columns.map(col => `
+                <tr>
+                    <td><strong>${col.id}</strong></td>
+                    <td style="color:${col.type === 'corner' ? '#f59e0b' : col.type === 'edge' ? '#00d4ff' : '#10b981'}">${col.type}</td>
+                    <td>${col.loadPerFloor.toFixed(1)}</td>
+                </tr>
+            `).join('');
+
+            // Beam table
+            const beamBody = document.getElementById('beamResultsBody');
+            beamBody.innerHTML = state.beams.slice(0, 20).map(beam => `
+                <tr>
+                    <td>${beam.id}</td>
+                    <td>${beam.w.toFixed(1)}</td>
+                    <td>${beam.Rleft.toFixed(1)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== DRAWING ==========
+        function draw() {
+            if (!ctx) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw slabs (filled)
+            for (let slab of state.slabs) {
+                const x1 = slab.x1 * state.scale + state.offsetX;
+                const y1 = slab.y1 * state.scale + state.offsetY;
+                const w = slab.lx * state.scale;
+                const h = slab.ly * state.scale;
+
+                ctx.fillStyle = 'rgba(0, 212, 255, 0.1)';
+                ctx.fillRect(x1, y1, w, h);
+                ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
+                ctx.strokeRect(x1, y1, w, h);
+            }
+
+            // Draw beams
+            ctx.lineWidth = 3;
+            for (let beam of state.beams) {
+                const x1 = beam.x1 * state.scale + state.offsetX;
+                const y1 = beam.y1 * state.scale + state.offsetY;
+                const x2 = beam.x2 * state.scale + state.offsetX;
+                const y2 = beam.y2 * state.scale + state.offsetY;
+
+                ctx.strokeStyle = beam.direction === 'X' ? '#7c3aed' : '#10b981';
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+
+            // Draw columns
+            for (let col of state.columns) {
+                const x = col.x * state.scale + state.offsetX;
+                const y = col.y * state.scale + state.offsetY;
+                const size = 12;
+
+                // Color by type
+                let color = '#10b981'; // Interior
+                if (col.type === 'corner') color = '#f59e0b';
+                else if (col.type === 'edge') color = '#00d4ff';
+
+                ctx.fillStyle = color;
+                ctx.fillRect(x - size / 2, y - size / 2, size, size);
+
+                // Label
+                if (state.showLabels) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(col.id, x, y - 12);
+                    ctx.fillStyle = '#8b949e';
+                    ctx.font = '9px sans-serif';
+                    ctx.fillText(`${col.loadPerFloor.toFixed(0)} kN`, x, y + 20);
+                }
+            }
+        }
+
+        // ========== CONTROLS ==========
+        function zoomIn() {
+            state.scale *= 1.2;
+            draw();
+        }
+
+        function zoomOut() {
+            state.scale /= 1.2;
+            draw();
+        }
+
+        function fitView() {
+            if (state.columns.length === 0) return;
+
+            const maxX = Math.max(...state.columns.map(c => c.x));
+            const maxY = Math.max(...state.columns.map(c => c.y));
+
+            const margin = 150;
+            const scaleX = (canvas.width - margin * 2) / maxX;
+            const scaleY = (canvas.height - margin * 2) / maxY;
+            state.scale = Math.min(scaleX, scaleY, 80);
+
+            state.offsetX = (canvas.width - maxX * state.scale) / 2;
+            state.offsetY = (canvas.height - maxY * state.scale) / 2;
+
+            draw();
+        }
+
+        function toggleLabels() {
+            state.showLabels = !state.showLabels;
+            document.getElementById('toggleLabels').classList.toggle('active', state.showLabels);
+            draw();
+        }
+
+        function exportResults() {
+            const data = {
+                parameters: {
+                    xSpans: state.xSpans,
+                    ySpans: state.ySpans,
+                    dlSuper: state.dlSuper,
+                    liveLoad: state.liveLoad,
+                    slabThickness: state.slabThickness,
+                    numFloors: state.numFloors
+                },
+                columns: state.columns.map(c => ({
+                    id: c.id,
+                    type: c.type,
+                    loadPerFloor: c.loadPerFloor,
+                    totalLoad: c.totalLoad
+                })),
+                beams: state.beams.map(b => ({
+                    id: b.id,
+                    w: b.w,
+                    R: b.Rleft
+                }))
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tributary_pro_v2_results.json';
+            a.click();
+        }
+
+        // ========== INIT ==========
+        window.onload = function () {
+            initCanvas();
+            renderSpans();
+            calculate();
+            fitView();
+        };
+    </script>
+</body>
+
+</html>
