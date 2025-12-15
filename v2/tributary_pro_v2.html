@@ -753,39 +753,11 @@
             const yCoords = [0];
             for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
 
-            // Generate X-direction beams (along gridlines in Y direction)
+            // Create beam objects with zero tributary areas first
             for (let yi = 0; yi < yCoords.length; yi++) {
                 for (let xi = 0; xi < state.xSpans.length; xi++) {
                     const beamSpan = state.xSpans[xi];
                     const beamId = `BX-${yi + 1}-${xi + 1}`;
-
-                    // Calculate tributary width for this beam
-                    // Gets triangular tributary from 2-way slab (45° rule)
-                    let tributaryArea = 0;
-
-                    // From slab below (if exists)
-                    if (yi > 0) {
-                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi - 1);
-                        if (slab && slab.isTwoWay) {
-                            // Triangular: area = lx * (lx/2) / 2 = lx²/4 per side
-                            // But since beam gets triangle from one slab side
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            tributaryArea += slab.lx * triHeight / 2;
-                        }
-                    }
-
-                    // From slab above (if exists)
-                    if (yi < state.ySpans.length) {
-                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi);
-                        if (slab && slab.isTwoWay) {
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            tributaryArea += slab.lx * triHeight / 2;
-                        }
-                    }
-
-                    // Equivalent uniform load
-                    const tributaryWidth = tributaryArea / beamSpan;
-                    const w = pu * tributaryWidth; // kN/m
 
                     state.beams.push({
                         id: beamId,
@@ -796,59 +768,20 @@
                         x2: xCoords[xi + 1],
                         y2: yCoords[yi],
                         span: beamSpan,
-                        tributaryWidth,
-                        tributaryArea,
-                        w,
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        w: 0,
                         Rleft: 0,
                         Rright: 0
                     });
                 }
             }
 
-            // Generate Y-direction beams (along gridlines in X direction)
+            // Y-direction beams (along gridlines in X direction)
             for (let xi = 0; xi < xCoords.length; xi++) {
                 for (let yi = 0; yi < state.ySpans.length; yi++) {
                     const beamSpan = state.ySpans[yi];
                     const beamId = `BY-${xi + 1}-${yi + 1}`;
-
-                    let tributaryArea = 0;
-
-                    // From slab left (if exists)
-                    if (xi > 0) {
-                        const slab = state.slabs.find(s => s.xi === xi - 1 && s.yi === yi);
-                        if (slab && slab.isTwoWay) {
-                            // Trapezoidal for long direction
-                            // Area = (top + bottom) * height / 2
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            const trapBase = slab.ly;
-                            const trapTop = slab.ly - 2 * triHeight;
-                            if (trapTop > 0) {
-                                // Trapezoidal
-                                tributaryArea += (trapBase + trapTop) * triHeight / 2;
-                            } else {
-                                // Full triangle (when lx >= ly)
-                                tributaryArea += slab.ly * triHeight / 2;
-                            }
-                        }
-                    }
-
-                    // From slab right (if exists)
-                    if (xi < state.xSpans.length) {
-                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi);
-                        if (slab && slab.isTwoWay) {
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            const trapBase = slab.ly;
-                            const trapTop = slab.ly - 2 * triHeight;
-                            if (trapTop > 0) {
-                                tributaryArea += (trapBase + trapTop) * triHeight / 2;
-                            } else {
-                                tributaryArea += slab.ly * triHeight / 2;
-                            }
-                        }
-                    }
-
-                    const tributaryWidth = tributaryArea / beamSpan;
-                    const w = pu * tributaryWidth;
 
                     state.beams.push({
                         id: beamId,
@@ -859,13 +792,68 @@
                         x2: xCoords[xi],
                         y2: yCoords[yi + 1],
                         span: beamSpan,
-                        tributaryWidth,
-                        tributaryArea,
-                        w,
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        w: 0,
                         Rleft: 0,
                         Rright: 0
                     });
                 }
+            }
+
+            // Map for quick access
+            const beamMap = Object.fromEntries(state.beams.map(beam => [beam.id, beam]));
+
+            // Distribute slab areas to adjacent beams
+            for (let slab of state.slabs) {
+                const topBeamId = `BX-${slab.yi + 1}-${slab.xi + 1}`;
+                const bottomBeamId = `BX-${slab.yi + 2}-${slab.xi + 1}`;
+                const leftBeamId = `BY-${slab.xi + 1}-${slab.yi + 1}`;
+                const rightBeamId = `BY-${slab.xi + 2}-${slab.yi + 1}`;
+
+                if (slab.isTwoWay) {
+                    const triHeight = Math.min(slab.lx, slab.ly) / 2;
+
+                    // Provisional areas based on 45° triangular/trapezoidal geometry
+                    const xSideArea = slab.lx * triHeight / 2; // triangle
+                    const trapBase = slab.ly;
+                    const trapTop = slab.ly - 2 * triHeight;
+                    const ySideArea = trapTop > 0
+                        ? (trapBase + trapTop) * triHeight / 2
+                        : slab.ly * triHeight / 2; // triangle when lines meet before midspan
+
+                    // Normalize so the four areas sum to the slab area
+                    const provisionalTotal = 2 * xSideArea + 2 * ySideArea;
+                    const scale = provisionalTotal > 0 ? slab.area / provisionalTotal : 0;
+
+                    const addToBeam = (id, area) => {
+                        if (beamMap[id]) beamMap[id].tributaryArea += area * scale;
+                    };
+
+                    addToBeam(topBeamId, xSideArea);
+                    addToBeam(bottomBeamId, xSideArea);
+                    addToBeam(leftBeamId, ySideArea);
+                    addToBeam(rightBeamId, ySideArea);
+                } else {
+                    // One-way spanning: load goes to beams parallel to long direction
+                    const addToBeam = (id) => {
+                        if (beamMap[id]) beamMap[id].tributaryArea += slab.area / 2;
+                    };
+
+                    if (slab.lx < slab.ly) {
+                        addToBeam(leftBeamId);
+                        addToBeam(rightBeamId);
+                    } else {
+                        addToBeam(topBeamId);
+                        addToBeam(bottomBeamId);
+                    }
+                }
+            }
+
+            // Finalize tributary widths and loads
+            for (let beam of state.beams) {
+                beam.tributaryWidth = beam.tributaryArea / beam.span;
+                beam.w = pu * beam.tributaryWidth;
             }
         }
 
