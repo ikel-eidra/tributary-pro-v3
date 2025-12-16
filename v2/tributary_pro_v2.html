@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tributary Pro v2.1 | Structural Load Analysis</title>
+    <title>Tributary Pro v2.0 | Structural Load Analysis</title>
     <style>
         /* ========== RESET & VARIABLES ========== */
         * {
@@ -373,7 +373,7 @@
     <header class="header">
         <div class="logo">
             <div class="logo-icon">📐</div>
-            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.1</span></h1>
+            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.0</span></h1>
         </div>
         <div class="header-actions">
             <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
@@ -449,7 +449,6 @@
                 <button class="tool-btn" onclick="zoomOut()">➖ Zoom Out</button>
                 <button class="tool-btn" onclick="fitView()">⊡ Fit</button>
                 <button class="tool-btn" id="toggleLabels" onclick="toggleLabels()">🏷️ Labels</button>
-                <button class="tool-btn" id="toggleAreas" onclick="toggleAreas()">🔺 Areas</button>
             </div>
             <div class="canvas-wrapper">
                 <canvas id="mainCanvas"></canvas>
@@ -466,6 +465,11 @@
                     <div class="label">Total Slab Area</div>
                     <div class="value" id="totalArea">0</div>
                     <div class="unit">m²</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Area Balance</div>
+                    <div class="value" id="areaBalance">0%</div>
+                    <div class="unit" id="areaBalanceDetail">beam vs slab</div>
                 </div>
                 <div class="summary-card">
                     <div class="label">Factored Load</div>
@@ -553,10 +557,16 @@
             scale: 50,
             offsetX: 100,
             offsetY: 100,
-            showLabels: true,
-            showAreas: false,
-            selectedBeam: null
+            showLabels: true
         };
+
+        const MIN_SPAN = 0.25; // m, guard against zero/negative spans
+
+        function sanitizeSpan(value, fallback = 4.0) {
+            const numeric = parseFloat(value);
+            if (Number.isFinite(numeric) && numeric > MIN_SPAN) return numeric;
+            return fallback;
+        }
 
         // ========== CANVAS SETUP ==========
         let canvas, ctx;
@@ -590,9 +600,9 @@
                 row.className = 'span-row';
                 row.innerHTML = `
                     <span style="color:#8b949e;font-size:0.7rem;width:30px;">${dir.toUpperCase()}${i + 1}</span>
-                    <input type="number" value="${span}" step="0.5" min="1" max="20"
+                    <input type="number" value="${span}" step="0.5" min="${MIN_SPAN}" max="20"
                            onchange="updateSpan('${dir}', ${i}, this.value)">
-                    <button class="remove-btn" onclick="removeSpan('${dir}', ${i})" 
+                    <button class="remove-btn" onclick="removeSpan('${dir}', ${i})"
                             ${spans.length <= 1 ? 'disabled' : ''}>×</button>
                 `;
                 container.appendChild(row);
@@ -601,7 +611,7 @@
 
         function updateSpan(dir, index, value) {
             const spans = dir === 'x' ? state.xSpans : state.ySpans;
-            spans[index] = parseFloat(value) || 4.0;
+            spans[index] = sanitizeSpan(value, spans[index] || 4.0);
             calculate();
         }
 
@@ -620,37 +630,6 @@
                 calculate();
             }
         }
-        // ========== POLYGON UTILITIES (v2.1) ==========
-
-        /**
-         * Compute area and centroid of a polygon using shoelace formula
-         * @param {Array} points - Array of {x, y} objects
-         * @returns {Object} - {area, cx, cy}
-         */
-        function computePolygonAreaAndCentroid(points) {
-            let A = 0;
-            let Cx = 0;
-            let Cy = 0;
-            const n = points.length;
-
-            for (let i = 0; i < n; i++) {
-                const { x: x0, y: y0 } = points[i];
-                const { x: x1, y: y1 } = points[(i + 1) % n];
-                const cross = x0 * y1 - x1 * y0;
-                A += cross;
-                Cx += (x0 + x1) * cross;
-                Cy += (y0 + y1) * cross;
-            }
-
-            A *= 0.5;
-            const factor = A !== 0 ? 1 / (6 * A) : 0;
-
-            return {
-                area: Math.abs(A),
-                cx: Cx * factor,
-                cy: Cy * factor
-            };
-        }
 
         // ========== CORE CALCULATIONS ==========
 
@@ -664,6 +643,10 @@
             state.liveLoad = parseFloat(document.getElementById('liveLoad').value) || 2.0;
             state.slabThickness = parseFloat(document.getElementById('slabThickness').value) || 150;
             state.numFloors = parseInt(document.getElementById('numFloors').value) || 3;
+
+            // Clean spans to avoid zero/negative values that could break width calculations
+            state.xSpans = state.xSpans.map(span => sanitizeSpan(span));
+            state.ySpans = state.ySpans.map(span => sanitizeSpan(span));
 
             // Step 1: Generate grid coordinates
             generateGrid();
@@ -759,7 +742,7 @@
                     const isTwoWay = ratio < 2;
 
                     state.slabs.push({
-                        id: `S-${yi + 1}-${xi + 1}`,  // v2.1: updated ID format
+                        id: `S${yi * state.xSpans.length + xi + 1}`,
                         x1: xCoords[xi],
                         y1: yCoords[yi],
                         x2: xCoords[xi + 1],
@@ -775,7 +758,8 @@
 
         /**
          * Step 3 & 4: Generate beams and calculate tributary widths
-         * v2.1: Now generates polygon regions with area & centroid
+         * For 2-way slabs: Use 45° rule for triangular/trapezoidal distribution
+         * For simplicity in v2.0: Convert to equivalent uniform load
          */
         function generateBeams(pu) {
             state.beams = [];
@@ -786,7 +770,7 @@
             const yCoords = [0];
             for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
 
-            // Create beam objects with zero tributary areas and empty regions
+            // Create beam objects with zero tributary areas first
             for (let yi = 0; yi < yCoords.length; yi++) {
                 for (let xi = 0; xi < state.xSpans.length; xi++) {
                     const beamSpan = state.xSpans[xi];
@@ -803,7 +787,6 @@
                         span: beamSpan,
                         tributaryWidth: 0,
                         tributaryArea: 0,
-                        tributaryRegions: [],  // v2.1: polygon regions
                         w: 0,
                         Rleft: 0,
                         Rright: 0
@@ -828,7 +811,6 @@
                         span: beamSpan,
                         tributaryWidth: 0,
                         tributaryArea: 0,
-                        tributaryRegions: [],  // v2.1: polygon regions
                         w: 0,
                         Rleft: 0,
                         Rright: 0
@@ -839,153 +821,55 @@
             // Map for quick access
             const beamMap = Object.fromEntries(state.beams.map(beam => [beam.id, beam]));
 
-            // v2.1: Generate tributary regions with polygons
+            // Distribute slab areas to adjacent beams
             for (let slab of state.slabs) {
-                const x0 = slab.x1;
-                const x1 = slab.x2;
-                const y0 = slab.y1;
-                const y1 = slab.y2;
-                const cx_mid = (x0 + x1) / 2;
-                const cy_mid = (y0 + y1) / 2;
-
                 const topBeamId = `BX-${slab.yi + 1}-${slab.xi + 1}`;
                 const bottomBeamId = `BX-${slab.yi + 2}-${slab.xi + 1}`;
                 const leftBeamId = `BY-${slab.xi + 1}-${slab.yi + 1}`;
                 const rightBeamId = `BY-${slab.xi + 2}-${slab.yi + 1}`;
 
                 if (slab.isTwoWay) {
-                    // v2.1: Create 4 triangle regions to center (diagonals)
-                    const topPolygon = [
-                        { x: x0, y: y0 },
-                        { x: x1, y: y0 },
-                        { x: cx_mid, y: cy_mid }
-                    ];
-                    const bottomPolygon = [
-                        { x: x0, y: y1 },
-                        { x: x1, y: y1 },
-                        { x: cx_mid, y: cy_mid }
-                    ];
-                    const leftPolygon = [
-                        { x: x0, y: y0 },
-                        { x: x0, y: y1 },
-                        { x: cx_mid, y: cy_mid }
-                    ];
-                    const rightPolygon = [
-                        { x: x1, y: y0 },
-                        { x: x1, y: y1 },
-                        { x: cx_mid, y: cy_mid }
-                    ];
+                    const triHeight = Math.min(slab.lx, slab.ly) / 2;
 
-                    const regions = [
-                        { role: 'top', beamId: topBeamId, polygon: topPolygon },
-                        { role: 'bottom', beamId: bottomBeamId, polygon: bottomPolygon },
-                        { role: 'left', beamId: leftBeamId, polygon: leftPolygon },
-                        { role: 'right', beamId: rightBeamId, polygon: rightPolygon }
-                    ];
+                    // Provisional areas based on 45° triangular/trapezoidal geometry
+                    const xSideArea = slab.lx * triHeight / 2; // triangle
+                    const trapBase = slab.ly;
+                    const trapTop = slab.ly - 2 * triHeight;
+                    const ySideArea = trapTop > 0
+                        ? (trapBase + trapTop) * triHeight / 2
+                        : slab.ly * triHeight / 2; // triangle when lines meet before midspan
 
-                    // Compute area + centroid for each polygon
-                    let totalRegionArea = 0;
-                    for (let reg of regions) {
-                        const { area, cx, cy } = computePolygonAreaAndCentroid(reg.polygon);
-                        reg.area_raw = area;
-                        reg.cx = cx;
-                        reg.cy = cy;
-                        totalRegionArea += area;
-                    }
+                    // Normalize so the four areas sum to the slab area
+                    const provisionalTotal = 2 * xSideArea + 2 * ySideArea;
+                    const scale = provisionalTotal > 0 ? slab.area / provisionalTotal : 0;
 
-                    // Normalize so total = slab.area
-                    const scale = totalRegionArea > 0 ? slab.area / totalRegionArea : 0;
+                    const addToBeam = (id, area) => {
+                        if (beamMap[id]) beamMap[id].tributaryArea += area * scale;
+                    };
 
-                    for (let reg of regions) {
-                        const beam = beamMap[reg.beamId];
-                        if (!beam) continue;
-
-                        const finalArea = reg.area_raw * scale;
-                        const tribWidth = finalArea / beam.span;
-                        const w = pu * tribWidth;
-
-                        beam.tributaryArea += finalArea;
-                        beam.tributaryRegions.push({
-                            id: `${reg.beamId}-${reg.role}`,
-                            slabId: slab.id,
-                            polygon: reg.polygon,
-                            area: finalArea,
-                            cx: reg.cx,
-                            cy: reg.cy,
-                            tributaryWidth: tribWidth,
-                            w: w
-                        });
-                    }
+                    addToBeam(topBeamId, xSideArea);
+                    addToBeam(bottomBeamId, xSideArea);
+                    addToBeam(leftBeamId, ySideArea);
+                    addToBeam(rightBeamId, ySideArea);
                 } else {
-                    // One-way slab: split into 2 rectangles
-                    const midX = (x0 + x1) / 2;
-                    const midY = (y0 + y1) / 2;
+                    // One-way spanning: load goes to beams parallel to long direction
+                    const addToBeam = (id) => {
+                        if (beamMap[id]) beamMap[id].tributaryArea += slab.area / 2;
+                    };
 
-                    let regions;
                     if (slab.lx < slab.ly) {
-                        // Spanning in Y, supported by left/right beams
-                        const leftPolygon = [
-                            { x: x0, y: y0 },
-                            { x: midX, y: y0 },
-                            { x: midX, y: y1 },
-                            { x: x0, y: y1 }
-                        ];
-                        const rightPolygon = [
-                            { x: midX, y: y0 },
-                            { x: x1, y: y0 },
-                            { x: x1, y: y1 },
-                            { x: midX, y: y1 }
-                        ];
-                        regions = [
-                            { role: 'left', beamId: leftBeamId, polygon: leftPolygon },
-                            { role: 'right', beamId: rightBeamId, polygon: rightPolygon }
-                        ];
+                        addToBeam(leftBeamId);
+                        addToBeam(rightBeamId);
                     } else {
-                        // Spanning in X, supported by top/bottom beams
-                        const topPolygon = [
-                            { x: x0, y: y0 },
-                            { x: x1, y: y0 },
-                            { x: x1, y: midY },
-                            { x: x0, y: midY }
-                        ];
-                        const bottomPolygon = [
-                            { x: x0, y: midY },
-                            { x: x1, y: midY },
-                            { x: x1, y: y1 },
-                            { x: x0, y: y1 }
-                        ];
-                        regions = [
-                            { role: 'top', beamId: topBeamId, polygon: topPolygon },
-                            { role: 'bottom', beamId: bottomBeamId, polygon: bottomPolygon }
-                        ];
-                    }
-
-                    for (let reg of regions) {
-                        const { area, cx, cy } = computePolygonAreaAndCentroid(reg.polygon);
-                        const beam = beamMap[reg.beamId];
-                        if (!beam) continue;
-
-                        const tribWidth = area / beam.span;
-                        const w = pu * tribWidth;
-
-                        beam.tributaryArea += area;
-                        beam.tributaryRegions.push({
-                            id: `${reg.beamId}-${reg.role}`,
-                            slabId: slab.id,
-                            polygon: reg.polygon,
-                            area: area,
-                            cx: cx,
-                            cy: cy,
-                            tributaryWidth: tribWidth,
-                            w: w
-                        });
+                        addToBeam(topBeamId);
+                        addToBeam(bottomBeamId);
                     }
                 }
             }
 
             // Finalize tributary widths and loads
             for (let beam of state.beams) {
-                beam.tributaryWidth = beam.tributaryArea / beam.span;
+                beam.tributaryWidth = beam.span > 0 ? beam.tributaryArea / beam.span : 0;
                 beam.w = pu * beam.tributaryWidth;
             }
         }
@@ -1052,6 +936,16 @@
             const totalArea = state.slabs.reduce((sum, s) => sum + s.area, 0);
             document.getElementById('totalArea').textContent = totalArea.toFixed(1);
 
+            // Beam tributary area check
+            const totalBeamArea = state.beams.reduce((sum, b) => sum + b.tributaryArea, 0);
+            const areaBalance = totalArea > 0 ? (totalBeamArea / totalArea) * 100 : 0;
+            const areaDelta = totalBeamArea - totalArea;
+            const balanceEl = document.getElementById('areaBalance');
+            const balanceDetailEl = document.getElementById('areaBalanceDetail');
+            balanceEl.textContent = `${areaBalance.toFixed(1)}%`;
+            balanceEl.style.color = Math.abs(areaDelta) < 0.01 ? 'var(--success)' : 'var(--warning)';
+            balanceDetailEl.textContent = `${areaDelta.toFixed(2)} m² diff`;
+
             // Factored load
             document.getElementById('factoredLoad').textContent = pu.toFixed(2);
 
@@ -1060,7 +954,9 @@
             document.getElementById('totalPerFloor').textContent = totalPerFloor.toFixed(0);
 
             // Max column
-            const maxCol = Math.max(...state.columns.map(c => c.loadPerFloor));
+            const maxCol = state.columns.length
+                ? Math.max(...state.columns.map(c => c.loadPerFloor))
+                : 0;
             document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
 
             // Column table
@@ -1103,72 +999,6 @@
                 ctx.strokeRect(x1, y1, w, h);
             }
 
-            // v2.1: Draw tributary regions when Areas is ON
-            if (state.showAreas) {
-                const colors = {
-                    top: 'rgba(124, 58, 237, 0.3)',    // Purple
-                    bottom: 'rgba(124, 58, 237, 0.3)',
-                    left: 'rgba(16, 185, 129, 0.3)',   // Green
-                    right: 'rgba(16, 185, 129, 0.3)'
-                };
-                const strokeColors = {
-                    top: '#7c3aed',
-                    bottom: '#7c3aed',
-                    left: '#10b981',
-                    right: '#10b981'
-                };
-
-                for (let beam of state.beams) {
-                    for (let region of beam.tributaryRegions) {
-                        // Draw polygon
-                        ctx.beginPath();
-                        const firstPt = region.polygon[0];
-                        ctx.moveTo(
-                            firstPt.x * state.scale + state.offsetX,
-                            firstPt.y * state.scale + state.offsetY
-                        );
-                        for (let i = 1; i < region.polygon.length; i++) {
-                            const pt = region.polygon[i];
-                            ctx.lineTo(
-                                pt.x * state.scale + state.offsetX,
-                                pt.y * state.scale + state.offsetY
-                            );
-                        }
-                        ctx.closePath();
-
-                        // Get role from region id
-                        const role = region.id.split('-').pop();
-                        ctx.fillStyle = colors[role] || 'rgba(255,255,255,0.2)';
-                        ctx.fill();
-                        ctx.strokeStyle = strokeColors[role] || '#fff';
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-
-                        // Draw centroid marker and label
-                        const cx = region.cx * state.scale + state.offsetX;
-                        const cy = region.cy * state.scale + state.offsetY;
-
-                        // Centroid dot
-                        ctx.beginPath();
-                        ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-                        ctx.fillStyle = '#fff';
-                        ctx.fill();
-
-                        // Label at centroid
-                        if (state.showLabels) {
-                            ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                            ctx.fillRect(cx - 30, cy - 18, 60, 24);
-                            ctx.fillStyle = '#00d4ff';
-                            ctx.font = '9px sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.fillText(`A=${region.area.toFixed(1)}m²`, cx, cy - 6);
-                            ctx.fillStyle = '#f59e0b';
-                            ctx.fillText(`w=${region.w.toFixed(1)}kN/m`, cx, cy + 6);
-                        }
-                    }
-                }
-            }
-
             // Draw beams
             ctx.lineWidth = 3;
             for (let beam of state.beams) {
@@ -1199,7 +1029,7 @@
                 ctx.fillRect(x - size / 2, y - size / 2, size, size);
 
                 // Label
-                if (state.showLabels && !state.showAreas) {
+                if (state.showLabels) {
                     ctx.fillStyle = '#fff';
                     ctx.font = '10px sans-serif';
                     ctx.textAlign = 'center';
@@ -1245,35 +1075,8 @@
             draw();
         }
 
-        // v2.1: Toggle Areas visualization
-        function toggleAreas() {
-            state.showAreas = !state.showAreas;
-            document.getElementById('toggleAreas').classList.toggle('active', state.showAreas);
-            draw();
-        }
-
         function exportResults() {
-            // v2.1: Collect all tributary regions for export
-            const tributaryRegions = [];
-            for (let beam of state.beams) {
-                for (let region of beam.tributaryRegions) {
-                    tributaryRegions.push({
-                        beam_id: beam.id,
-                        direction: beam.direction,
-                        region_id: region.id,
-                        slab_id: region.slabId,
-                        area_m2: region.area,
-                        centroid_x_m: region.cx,
-                        centroid_y_m: region.cy,
-                        tributary_width_m: region.tributaryWidth,
-                        w_kN_per_m: region.w
-                    });
-                }
-            }
-
             const data = {
-                version: '2.1',
-                timestamp: new Date().toISOString(),
                 parameters: {
                     xSpans: state.xSpans,
                     ySpans: state.ySpans,
@@ -1282,39 +1085,24 @@
                     slabThickness: state.slabThickness,
                     numFloors: state.numFloors
                 },
-                slabs: state.slabs.map(s => ({
-                    id: s.id,
-                    x1: s.x1, y1: s.y1,
-                    x2: s.x2, y2: s.y2,
-                    area: s.area,
-                    isTwoWay: s.isTwoWay
-                })),
                 columns: state.columns.map(c => ({
                     id: c.id,
-                    x: c.x, y: c.y,
                     type: c.type,
                     loadPerFloor: c.loadPerFloor,
                     totalLoad: c.totalLoad
                 })),
                 beams: state.beams.map(b => ({
                     id: b.id,
-                    direction: b.direction,
-                    x1: b.x1, y1: b.y1,
-                    x2: b.x2, y2: b.y2,
-                    span: b.span,
-                    tributaryArea: b.tributaryArea,
                     w: b.w,
-                    Rleft: b.Rleft,
-                    Rright: b.Rright
-                })),
-                tributaryRegions: tributaryRegions  // v2.1: detailed region data
+                    R: b.Rleft
+                }))
             };
 
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'tributary_pro_v2.1_results.json';
+            a.download = 'tributary_pro_v2_results.json';
             a.click();
         }
 
