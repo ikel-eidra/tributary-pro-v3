@@ -865,15 +865,15 @@
                 }
 
                 if (slab.isTwoWay) {
-                    const triHeight = Math.min(slab.lx, slab.ly) / 2;
+                    const h = Math.min(slab.lx, slab.ly) / 2;  // 45° inset height
 
                     // Provisional areas based on 45° triangular/trapezoidal geometry
-                    const xSideArea_raw = slab.lx * triHeight / 2; // triangle for X-beams (top/bottom)
+                    const xSideArea_raw = slab.lx * h / 2; // triangle for X-beams (top/bottom)
                     const trapBase = slab.ly;
-                    const trapTop = slab.ly - 2 * triHeight;
+                    const trapTop = slab.ly - 2 * h;
                     const ySideArea_raw = trapTop > 0
-                        ? (trapBase + trapTop) * triHeight / 2  // trapezoid for Y-beams
-                        : slab.ly * triHeight / 2;              // triangle when lines meet
+                        ? (trapBase + trapTop) * h / 2  // trapezoid for Y-beams
+                        : slab.ly * h / 2;              // triangle when lines meet
 
                     // Normalize so total = slab.area
                     const rawTotal = 2 * xSideArea_raw + 2 * ySideArea_raw;
@@ -884,11 +884,85 @@
                     const A_left = ySideArea_raw * scale;
                     const A_right = ySideArea_raw * scale;
 
-                    // Triangle polygons for visualization
-                    const topPoly = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: cx_mid, y: cy_mid }];
-                    const bottomPoly = [{ x: x0, y: y1 }, { x: x1, y: y1 }, { x: cx_mid, y: cy_mid }];
-                    const leftPoly = [{ x: x0, y: y0 }, { x: x0, y: y1 }, { x: cx_mid, y: cy_mid }];
-                    const rightPoly = [{ x: x1, y: y0 }, { x: x1, y: y1 }, { x: cx_mid, y: cy_mid }];
+                    // v2.2.1: Proper 45° polygon visualization
+                    // Short span beams get triangles, long span beams get trapezoids
+                    let topPoly, bottomPoly, leftPoly, rightPoly;
+
+                    if (slab.lx <= slab.ly) {
+                        // Short direction = X, so X-beams (top/bottom) get triangles
+                        // Y-beams (left/right) get trapezoids
+
+                        // Top triangle: base at y0, apex at y0 + h
+                        topPoly = [
+                            { x: x0, y: y0 },
+                            { x: x1, y: y0 },
+                            { x: x1 - h, y: y0 + h },
+                            { x: x0 + h, y: y0 + h }
+                        ];
+                        // But wait - this is a trapezoid. For triangle, both ends meet at center
+                        // Actually triangle: corners to center point offset by h
+                        topPoly = [
+                            { x: x0, y: y0 },
+                            { x: x1, y: y0 },
+                            { x: (x0 + x1) / 2, y: y0 + h }  // apex at midpoint, h down
+                        ];
+
+                        // Bottom triangle: base at y1, apex at y1 - h
+                        bottomPoly = [
+                            { x: x0, y: y1 },
+                            { x: x1, y: y1 },
+                            { x: (x0 + x1) / 2, y: y1 - h }
+                        ];
+
+                        // Left trapezoid: base ly, top ly - 2h
+                        leftPoly = [
+                            { x: x0, y: y0 },
+                            { x: x0, y: y1 },
+                            { x: x0 + h, y: y1 - h },
+                            { x: x0 + h, y: y0 + h }
+                        ];
+
+                        // Right trapezoid
+                        rightPoly = [
+                            { x: x1, y: y0 },
+                            { x: x1, y: y1 },
+                            { x: x1 - h, y: y1 - h },
+                            { x: x1 - h, y: y0 + h }
+                        ];
+                    } else {
+                        // Short direction = Y, so Y-beams (left/right) get triangles
+                        // X-beams (top/bottom) get trapezoids
+
+                        // Left triangle: base at x0, apex at x0 + h
+                        leftPoly = [
+                            { x: x0, y: y0 },
+                            { x: x0, y: y1 },
+                            { x: x0 + h, y: (y0 + y1) / 2 }
+                        ];
+
+                        // Right triangle
+                        rightPoly = [
+                            { x: x1, y: y0 },
+                            { x: x1, y: y1 },
+                            { x: x1 - h, y: (y0 + y1) / 2 }
+                        ];
+
+                        // Top trapezoid: base lx, top lx - 2h
+                        topPoly = [
+                            { x: x0, y: y0 },
+                            { x: x1, y: y0 },
+                            { x: x1 - h, y: y0 + h },
+                            { x: x0 + h, y: y0 + h }
+                        ];
+
+                        // Bottom trapezoid
+                        bottomPoly = [
+                            { x: x0, y: y1 },
+                            { x: x1, y: y1 },
+                            { x: x1 - h, y: y1 - h },
+                            { x: x0 + h, y: y1 - h }
+                        ];
+                    }
 
                     // Add slices with correct areas (NOT equal!)
                     makeSlice(topBeamId, 'top', A_top, topPoly);
