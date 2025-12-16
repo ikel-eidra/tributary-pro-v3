@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tributary Pro v2.5 | Structural Load Analysis</title>
+    <title>Tributary Pro v2.6 | Structural Load Analysis</title>
     <style>
         /* ========== RESET & VARIABLES ========== */
         * {
@@ -545,7 +545,7 @@
     <header class="header">
         <div class="logo">
             <div class="logo-icon">📐</div>
-            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.5</span></h1>
+            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.6</span></h1>
         </div>
         <div class="header-actions">
             <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
@@ -593,6 +593,43 @@
                 <div style="display: flex; gap: 4px; margin-top: 8px;">
                     <button class="add-floor-btn" onclick="addFloor()">+ Add Floor</button>
                     <button class="remove-floor-btn" onclick="removeFloor()">− Remove</button>
+                </div>
+
+                <!-- v2.6: GF Checkbox (suspended slabs start from 2F) -->
+                <div style="margin-top: 10px; padding: 8px; background: rgba(255,193,7,0.1); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.75rem;">
+                        <input type="checkbox" id="gfSuspended" onchange="toggleGFSuspended()">
+                        <span>🏠 GF Suspended (elevated house)</span>
+                    </label>
+                    <!-- Elevation Height - visible when GF Suspended is checked -->
+                    <div id="elevationSection" style="display: none; margin-top: 8px;">
+                        <label style="font-size: 0.65rem; color: #8b949e;">🏗️ Elevation Height:</label>
+                        <select id="elevationHeight" onchange="calculate()"
+                            style="width: 100%; padding: 4px; margin-top: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: white; font-size: 0.7rem;">
+                            <option value="0.9">0.9 m</option>
+                            <option value="1.0">1.0 m</option>
+                            <option value="1.2" selected>1.2 m</option>
+                            <option value="1.5">1.5 m</option>
+                            <option value="1.8">1.8 m</option>
+                        </select>
+                    </div>
+                    <div style="font-size: 0.65rem; color: #8b949e; margin-top: 4px;">
+                        If unchecked, GF slab loads are excluded (typical for ground-bearing slabs)
+                    </div>
+                </div>
+
+                <!-- v2.6: NSCP Building Type Preset -->
+                <div style="margin-top: 10px;">
+                    <label style="font-size: 0.7rem; color: #8b949e;">🏗️ NSCP Building Type:</label>
+                    <select id="buildingType" onchange="applyNSCPPreset()"
+                        style="width: 100%; padding: 6px; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: white;">
+                        <option value="residential">Residential (LL: 1.9 kPa)</option>
+                        <option value="residential_heavy">Residential Heavy (LL: 2.4 kPa)</option>
+                        <option value="office">Office (LL: 2.4 kPa)</option>
+                        <option value="commercial">Commercial/Retail (LL: 4.8 kPa)</option>
+                        <option value="school">School/Assembly (LL: 4.8 kPa)</option>
+                        <option value="hospital">Hospital (LL: 3.8 kPa)</option>
+                    </select>
                 </div>
 
                 <div class="floor-info" id="floorInfo">
@@ -790,7 +827,10 @@
 
             // v2.5: Footing state
             footingDepth: 1.5,
-            soilBearing: 150  // kPa
+            soilBearing: 150,  // kPa
+
+            // v2.6: GF suspended toggle
+            gfSuspended: false  // If false, GF slab loads excluded (ground-bearing)
         };
 
         const MIN_SPAN = 0.25; // m, guard against zero/negative spans
@@ -971,6 +1011,45 @@
             calculate();
         }
 
+        // v2.6: Toggle GF suspended slab
+        function toggleGFSuspended() {
+            state.gfSuspended = document.getElementById('gfSuspended').checked;
+
+            // Show/hide elevation height dropdown
+            const elevSection = document.getElementById('elevationSection');
+            if (elevSection) {
+                elevSection.style.display = state.gfSuspended ? 'block' : 'none';
+            }
+
+            calculate();
+        }
+
+        // v2.6: Apply NSCP preset DL/LL values
+        const NSCP_PRESETS = {
+            residential: { dlSuper: 1.5, liveLoad: 1.9, roofLL: 1.0, name: 'Residential' },
+            residential_heavy: { dlSuper: 2.0, liveLoad: 2.4, roofLL: 1.0, name: 'Residential (Heavy)' },
+            office: { dlSuper: 2.0, liveLoad: 2.4, roofLL: 1.0, name: 'Office' },
+            commercial: { dlSuper: 2.5, liveLoad: 4.8, roofLL: 1.5, name: 'Commercial/Retail' },
+            school: { dlSuper: 2.0, liveLoad: 4.8, roofLL: 1.0, name: 'School/Assembly' },
+            hospital: { dlSuper: 2.5, liveLoad: 3.8, roofLL: 1.0, name: 'Hospital' }
+        };
+
+        function applyNSCPPreset() {
+            const type = document.getElementById('buildingType').value;
+            const preset = NSCP_PRESETS[type];
+            if (!preset) return;
+
+            // Apply to all floors
+            for (let floor of state.floors) {
+                floor.dlSuper = preset.dlSuper;
+                floor.liveLoad = floor.isRoof ? preset.roofLL : preset.liveLoad;
+            }
+
+            // Update current floor UI
+            updateFloorUI();
+            calculate();
+        }
+
         function addFloor() {
             const total = state.floors.length;
             // Insert before roof (last)
@@ -1079,6 +1158,15 @@
             // v2.3: Calculate loads for each floor
             let totalPuSum = 0;
             for (let floor of state.floors) {
+                // v2.6: Skip GF if not suspended (ground-bearing slab)
+                if (floor.id === 'GF' && !state.gfSuspended) {
+                    // Store 0 load for GF to keep array consistent
+                    for (let col of state.columns) {
+                        col.floorLoads.push({ floorId: floor.id, load: 0 });
+                    }
+                    continue;
+                }
+
                 // Calculate factored load for this floor
                 const slabWeight = 24 * (floor.slabThickness / 1000); // kN/m² = kPa
                 const pu = 1.2 * (floor.dlSuper + slabWeight) + 1.6 * floor.liveLoad;
@@ -1898,9 +1986,12 @@
             const offsetX = -totalX / 2;
             const offsetZ = -totalY / 2;
 
+            // Track cumulative height for proper floor stacking
+            let cumulativeY = 0;
+
             // For each floor
             state.floors.forEach((floor, fi) => {
-                const baseY = fi * floor.height;
+                const baseY = cumulativeY;  // Use cumulative height, not fi * height
 
                 // COLUMNS - vertical boxes
                 for (let col of state.columns) {
@@ -1914,6 +2005,8 @@
                     scene3D.add(mesh);
                     meshes3D.push(mesh);
                 }
+
+                // Note: cumulativeY updated at end of forEach iteration
 
                 // BEAMS - at top of each floor
                 for (let beam of state.beams) {
@@ -1960,16 +2053,54 @@
                     scene3D.add(mesh);
                     meshes3D.push(mesh);
                 }
+
+                // Update cumulative height for next floor
+                cumulativeY += floor.height;
             });
 
-            // v2.5: FOOTINGS - below ground level
+            // v2.6: ELEVATED GF BEAMS - when gfSuspended is checked
+            const elevationHeight = state.gfSuspended
+                ? (parseFloat(document.getElementById('elevationHeight')?.value) || 1.2)
+                : 0;
+
+            if (state.gfSuspended && elevationHeight > 0) {
+                for (let beam of state.beams) {
+                    const length = Math.sqrt(
+                        Math.pow(beam.x2 - beam.x1, 2) +
+                        Math.pow(beam.y2 - beam.y1, 2)
+                    );
+
+                    const geo = beam.direction === 'X'
+                        ? new THREE.BoxGeometry(length, beamH, beamW)
+                        : new THREE.BoxGeometry(beamW, beamH, length);
+
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: 0x22d3ee  // Cyan for elevated GF beams
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+
+                    const mx = (beam.x1 + beam.x2) / 2 + offsetX;
+                    const mz = (beam.y1 + beam.y2) / 2 + offsetZ;
+                    // Position at elevation height (below GF floor)
+                    mesh.position.set(mx, elevationHeight - beamH / 2, mz);
+
+                    scene3D.add(mesh);
+                    meshes3D.push(mesh);
+                }
+            }
+
+            // v2.6: FOOTINGS - all leveled at top (same top level, varying thickness)
             const footingDepth = state.footingDepth;
+            const maxThick = Math.max(...state.columns.map(c => c.footingThick || 0.3));
+
             for (let col of state.columns) {
                 const size = col.footingSize || 0.8;
-                const thick = col.footingThick || 0.3;
+                // Increase thickness for smaller footings so all tops are level
+                const baseThick = col.footingThick || 0.3;
+                const adjustedThick = maxThick;  // All same thickness for level top
 
                 // Footing geometry
-                const geo = new THREE.BoxGeometry(size, thick, size);
+                const geo = new THREE.BoxGeometry(size, adjustedThick, size);
                 const mat = new THREE.MeshStandardMaterial({
                     color: 0x8b5cf6,  // Purple for footings
                     transparent: true,
@@ -1977,26 +2108,55 @@
                 });
                 const mesh = new THREE.Mesh(geo, mat);
 
-                // Position below ground (negative Y)
+                // Position below ground - all tops at same level
+                const footingTopY = -footingDepth + adjustedThick;
                 mesh.position.set(
                     col.x + offsetX,
-                    -footingDepth + thick / 2,
+                    footingTopY - adjustedThick / 2,
                     col.y + offsetZ
                 );
                 scene3D.add(mesh);
                 meshes3D.push(mesh);
 
                 // Footing pedestal (connecting column to footing)
-                const pedestalGeo = new THREE.BoxGeometry(colSize * 1.2, footingDepth - thick, colSize * 1.2);
+                const pedestalGeo = new THREE.BoxGeometry(colSize * 1.2, footingDepth - adjustedThick, colSize * 1.2);
                 const pedestalMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
                 const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
                 pedestal.position.set(
                     col.x + offsetX,
-                    -(footingDepth - thick) / 2,
+                    -(footingDepth - adjustedThick) / 2,
                     col.y + offsetZ
                 );
                 scene3D.add(pedestal);
                 meshes3D.push(pedestal);
+            }
+
+            // v2.6: TIE BEAMS - sitting ON TOP of all footings (same level)
+            const tieBeamH = 0.4;  // 400mm tie beam
+            const tieBeamW = 0.25; // 250mm width
+            const tieBeamTopY = -footingDepth + maxThick + tieBeamH / 2;  // On top of footings
+
+            for (let beam of state.beams) {
+                const length = Math.sqrt(
+                    Math.pow(beam.x2 - beam.x1, 2) +
+                    Math.pow(beam.y2 - beam.y1, 2)
+                );
+
+                const geo = beam.direction === 'X'
+                    ? new THREE.BoxGeometry(length, tieBeamH, tieBeamW)
+                    : new THREE.BoxGeometry(tieBeamW, tieBeamH, length);
+
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x666666  // Gray for tie beams
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                const mx = (beam.x1 + beam.x2) / 2 + offsetX;
+                const mz = (beam.y1 + beam.y2) / 2 + offsetZ;
+                mesh.position.set(mx, tieBeamTopY, mz);
+
+                scene3D.add(mesh);
+                meshes3D.push(mesh);
             }
 
             // Update camera target to center (including footings)
