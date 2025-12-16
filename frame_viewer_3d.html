@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Frame Viewer | Pang-Masa Engineering</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: rgba(20, 20, 30, 0.95);
+            padding: 20px;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .logo h1 span {
+            color: #00d4ff;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            margin-bottom: 12px;
+        }
+
+        .param-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .param-row label {
+            flex: 1;
+            font-size: 0.85rem;
+            color: #ccc;
+        }
+
+        .param-row input {
+            width: 80px;
+            padding: 6px 10px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .grid-display {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+        }
+
+        .grid-display .row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .grid-display .col-cell {
+            width: 30px;
+            height: 30px;
+            background: #00d4ff;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.65rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .grid-display .col-cell.disabled {
+            background: #444;
+            color: #888;
+        }
+
+        .grid-display .col-cell:hover {
+            transform: scale(1.1);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #canvas3d {
+            width: 100%;
+            height: 100%;
+        }
+
+        .view-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 30px;
+        }
+
+        .view-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn:hover,
+        .view-btn.active {
+            background: #00d4ff;
+            color: #000;
+        }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+        }
+
+        .stats {
+            position: absolute;
+            top: 20px;
+            left: 300px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.8rem;
+        }
+
+        .stat-label {
+            color: #8b949e;
+        }
+
+        .stat-value {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav
+        style="background: rgba(10,10,15,0.95); padding: 8px 20px; display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap;">
+        <a href="tributary_pro.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">📐
+            Tributary Pro</a>
+        <a href="frame_viewer_3d.html"
+            style="padding: 6px 14px; background: linear-gradient(135deg, #7c3aed, #00d4ff); border-radius: 6px; color: #fff; text-decoration: none; font-size: 0.8rem; font-weight: 600;">🏗️
+            3D Viewer</a>
+        <a href="footing_design.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">🔳
+            Footing Design</a>
+        <a href="foundation_plan.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">📋
+            Foundation Plan</a>
+        <a href="calculation_sheet.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">📄
+            Calc Sheet</a>
+        <a href="structural_analysis.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">⚡
+            Analysis</a>
+        <span style="flex: 1;"></span>
+        <span style="color: #8b949e; font-size: 0.7rem; align-self: center;">🚀 Pang-Masa Engineering Suite v0.1</span>
+    </nav>
+
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">🏗️</div>
+                <h1>3D Frame <span>Viewer</span></h1>
+            </div>
+
+            <div class="section">
+                <div class="section-header">Grid Configuration</div>
+                <div class="param-row">
+                    <label>X Bays</label>
+                    <input type="number" id="xBays" value="3" min="1" max="10">
+                </div>
+                <div class="param-row">
+                    <label>Y Bays</label>
+                    <input type="number" id="yBays" value="3" min="1" max="10">
+                </div>
+                <div class="param-row">
+                    <label>X Span (m)</label>
+                    <input type="number" id="xSpan" value="4" step="0.5">
+                </div>
+                <div class="param-row">
+                    <label>Y Span (m)</label>
+                    <input type="number" id="ySpan" value="4" step="0.5">
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">Building Height</div>
+                <div class="param-row">
+                    <label>Storeys</label>
+                    <input type="number" id="storeys" value="3" min="1" max="20">
+                </div>
+                <div class="param-row">
+                    <label>Floor Height (m)</label>
+                    <input type="number" id="floorHeight" value="3" step="0.1">
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">Click Columns to Toggle</div>
+                <div class="grid-display" id="gridDisplay">
+                    <!-- Column grid will be rendered here -->
+                </div>
+            </div>
+
+            <button class="btn" onclick="regenerateFrame()">🔄 Regenerate Frame</button>
+            <button class="btn btn-secondary" onclick="resetColumns()">↩️ Reset All Columns</button>
+            <button class="btn btn-secondary" onclick="exportModel()">📤 Export Model</button>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="canvas3d"></canvas>
+
+            <div class="stats" id="stats">
+                <div class="stat-row">
+                    <span class="stat-label">Active Columns:</span>
+                    <span class="stat-value" id="statColumns">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Beams:</span>
+                    <span class="stat-value" id="statBeams">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Height:</span>
+                    <span class="stat-value" id="statHeight">0m</span>
+                </div>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9C27B0;"></div>
+                    <span>Columns</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff9500;"></div>
+                    <span>X-Beams</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00c853;"></div>
+                    <span>Y-Beams</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(100,220,180,0.4);"></div>
+                    <span>Floor Slabs</span>
+                </div>
+            </div>
+
+            <div class="view-controls">
+                <button class="view-btn active" onclick="setView('perspective')">🎥 Perspective</button>
+                <button class="view-btn" onclick="setView('front')">📐 Front</button>
+                <button class="view-btn" onclick="setView('side')">📐 Side</button>
+                <button class="view-btn" onclick="setView('top')">📐 Top</button>
+                <button class="view-btn" onclick="toggleSlabs()">🔲 Slabs</button>
+                <button class="view-btn" onclick="toggleAnimation()">🔄 Rotate</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let state = {
+            xBays: 3,
+            yBays: 3,
+            xSpan: 4,
+            ySpan: 4,
+            storeys: 3,
+            floorHeight: 3,
+            disabledColumns: new Set(),
+            showSlabs: true,
+            isRotating: true
+        };
+
+        let canvas,
+            ctx;
+
+        let rotation = {
+            x: -0.5, y: 0.5
+        }
+
+            ;
+        let isDragging = false;
+
+        let lastMouse = {
+            x: 0, y: 0
+        }
+
+            ;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('canvas3d');
+            ctx = canvas.getContext('2d');
+
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Mouse controls
+            canvas.addEventListener('mousedown', e => {
+                isDragging = true;
+
+                lastMouse = {
+                    x: e.clientX, y: e.clientY
+                }
+
+                    ;
+            });
+
+            canvas.addEventListener('mousemove', e => {
+                if (isDragging) {
+                    rotation.y += (e.clientX - lastMouse.x) * 0.01;
+                    rotation.x += (e.clientY - lastMouse.y) * 0.01;
+                    rotation.x = Math.max(-1.5, Math.min(0.5, rotation.x));
+
+                    lastMouse = {
+                        x: e.clientX, y: e.clientY
+                    }
+
+                        ;
+                }
+            });
+            canvas.addEventListener('mouseup', () => isDragging = false);
+            canvas.addEventListener('mouseleave', () => isDragging = false);
+
+            // Input listeners
+            document.querySelectorAll('input').forEach(input => {
+                input.addEventListener('change', updateFromInputs);
+            });
+
+            // Try to load from Tributary Pro
+            loadFromTributaryPro();
+
+            updateFromInputs();
+            animate();
+        });
+
+        // Load model from Tributary Pro via localStorage
+        function loadFromTributaryPro() {
+            const savedModel = localStorage.getItem('tributaryPro3DModel');
+            const savedDisabled = localStorage.getItem('tributaryProDisabledColumns');
+
+            // Clear disabled columns first
+            state.disabledColumns.clear();
+
+            // Load disabled columns from standalone key (primary source, always up-to-date)
+            if (savedDisabled) {
+                try {
+                    const disabledData = JSON.parse(savedDisabled);
+                    // Combine all floors' disabled columns for 3D view
+                    for (let floor in disabledData) {
+                        for (let colId of disabledData[floor]) {
+                            state.disabledColumns.add(colId);
+                        }
+                    }
+                    console.log('[3D Viewer] Loaded disabled columns from tributaryProDisabledColumns:', state.disabledColumns.size, 'columns disabled');
+                } catch (e) {
+                    console.error('[3D Viewer] Error parsing tributaryProDisabledColumns:', e);
+                }
+            }
+
+            // Load model data if available
+            if (savedModel) {
+                try {
+                    const model = JSON.parse(savedModel);
+
+                    // Apply to state
+                    state.xBays = model.xSpans ? model.xSpans.length : 3;
+                    state.yBays = model.ySpans ? model.ySpans.length : 3;
+                    state.xSpan = model.xSpans ? model.xSpans[0] : 4;
+                    state.ySpan = model.ySpans ? model.ySpans[0] : 4;
+                    state.storeys = model.storeys || 3;
+                    state.floorHeight = model.floorHeight || 3;
+
+                    // Fallback: also check model's disabledColumnsPerFloor if standalone key was empty
+                    if (state.disabledColumns.size === 0 && model.disabledColumnsPerFloor) {
+                        for (let floor in model.disabledColumnsPerFloor) {
+                            for (let colId of model.disabledColumnsPerFloor[floor]) {
+                                state.disabledColumns.add(colId);
+                            }
+                        }
+                        console.log('[3D Viewer] Loaded disabled columns from tributaryPro3DModel fallback');
+                    }
+
+                    // Update inputs
+                    document.getElementById('xBays').value = state.xBays;
+                    document.getElementById('yBays').value = state.yBays;
+                    document.getElementById('xSpan').value = state.xSpan;
+                    document.getElementById('ySpan').value = state.ySpan;
+                    document.getElementById('storeys').value = state.storeys;
+                    document.getElementById('floorHeight').value = state.floorHeight;
+
+                    console.log('[3D Viewer] Loaded model from Tributary Pro, disabled columns:', state.disabledColumns.size);
+                } catch (e) {
+                    console.error('[3D Viewer] Error loading from Tributary Pro:', e);
+                }
+            }
+
+            // Always update display
+            renderGridDisplay();
+            updateStats();
+        }
+
+        // Listen for live updates from Tributary Pro
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'tributaryPro3DModel' || e.key === 'tributaryProDisabledColumns') {
+                console.log('[3D Viewer] Live update from Tributary Pro! Key:', e.key);
+                loadFromTributaryPro();
+            }
+        });
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+
+        function updateFromInputs() {
+            state.xBays = parseInt(document.getElementById('xBays').value) || 3;
+            state.yBays = parseInt(document.getElementById('yBays').value) || 3;
+            state.xSpan = parseFloat(document.getElementById('xSpan').value) || 4;
+            state.ySpan = parseFloat(document.getElementById('ySpan').value) || 4;
+            state.storeys = parseInt(document.getElementById('storeys').value) || 3;
+            state.floorHeight = parseFloat(document.getElementById('floorHeight').value) || 3;
+
+            renderGridDisplay();
+            updateStats();
+        }
+
+        function renderGridDisplay() {
+            const container = document.getElementById('gridDisplay');
+            const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';  // Skip I and O per engineering standard
+            let html = '';
+
+            for (let y = 0; y <= state.yBays; y++) {
+                html += '<div class="row">';
+
+                for (let x = 0; x <= state.xBays; x++) {
+                    const id = `${letters[x]}${y + 1}`;
+                    const disabled = state.disabledColumns.has(id);
+                    html += `<div class="col-cell ${disabled ? 'disabled' : ''}" onclick="toggleColumn('${id}')" title="${id}">${id}</div>`;
+                }
+
+                html += '</div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        function toggleColumn(id) {
+            if (state.disabledColumns.has(id)) {
+                state.disabledColumns.delete(id);
+            }
+
+            else {
+                state.disabledColumns.add(id);
+            }
+
+            renderGridDisplay();
+            updateStats();
+        }
+
+        function resetColumns() {
+            state.disabledColumns.clear();
+            renderGridDisplay();
+            updateStats();
+        }
+
+        function regenerateFrame() {
+            updateFromInputs();
+        }
+
+        function updateStats() {
+            const totalCols = (state.xBays + 1) * (state.yBays + 1);
+            const activeCols = totalCols - state.disabledColumns.size;
+
+            document.getElementById('statColumns').textContent = activeCols;
+            document.getElementById('statBeams').textContent = (state.xBays * (state.yBays + 1) + state.yBays * (state.xBays + 1)) * state.storeys;
+            document.getElementById('statHeight').textContent = (state.storeys * state.floorHeight).toFixed(1) + 'm';
+        }
+
+        // 3D Projection
+        function project(x, y, z) {
+            const scale = 20;
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            // Rotate Y axis
+            const cosY = Math.cos(rotation.y);
+            const sinY = Math.sin(rotation.y);
+            const x2 = x * cosY - z * sinY;
+            const z2 = z * cosY + x * sinY;
+
+            // Rotate X axis
+            const cosX = Math.cos(rotation.x);
+            const sinX = Math.sin(rotation.x);
+            const y2 = y * cosX - z2 * sinX;
+            const z3 = z2 * cosX + y * sinX;
+
+            // Perspective projection
+            const perspective = 500;
+            const factor = perspective / (perspective + z3 * scale);
+
+            return {
+                x: centerX + x2 * scale * factor,
+                y: centerY - y2 * scale * factor,
+                z: z3,
+                factor
+            }
+
+                ;
+        }
+
+        function animate() {
+            if (state.isRotating && !isDragging) {
+                rotation.y += 0.005;
+            }
+
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';  // Skip I and O per engineering standard
+            const elements = [];
+
+            // Get column positions
+            function getColPos(xi, yi) {
+                return {
+                    x: (xi - state.xBays / 2) * state.xSpan,
+                    y: (yi - state.yBays / 2) * state.ySpan
+                }
+
+                    ;
+            }
+
+            function isColumnEnabled(xi, yi) {
+                const id = `${letters[xi]}${yi + 1}`;
+                return !state.disabledColumns.has(id);
+            }
+
+            // Generate all elements with depth sorting
+            for (let s = 0; s <= state.storeys; s++) {
+                const z = s * state.floorHeight;
+
+                // Floor slabs
+                if (state.showSlabs && s > 0) {
+                    const corners = [];
+
+                    for (let yi = 0; yi <= state.yBays; yi++) {
+                        for (let xi = 0; xi <= state.xBays; xi++) {
+                            const pos = getColPos(xi, yi);
+                            corners.push(project(pos.x, z, pos.y));
+                        }
+                    }
+
+                    // Draw slab for each bay (only if all 4 corner columns are enabled)
+                    for (let yi = 0; yi < state.yBays; yi++) {
+                        for (let xi = 0; xi < state.xBays; xi++) {
+                            // Skip slab if any corner column is disabled
+                            if (!isColumnEnabled(xi, yi) ||
+                                !isColumnEnabled(xi + 1, yi) ||
+                                !isColumnEnabled(xi + 1, yi + 1) ||
+                                !isColumnEnabled(xi, yi + 1)) {
+                                continue;
+                            }
+
+                            const p1 = project(getColPos(xi, yi).x, z, getColPos(xi, yi).y);
+                            const p2 = project(getColPos(xi + 1, yi).x, z, getColPos(xi + 1, yi).y);
+                            const p3 = project(getColPos(xi + 1, yi + 1).x, z, getColPos(xi + 1, yi + 1).y);
+                            const p4 = project(getColPos(xi, yi + 1).x, z, getColPos(xi, yi + 1).y);
+
+                            const avgZ = (p1.z + p2.z + p3.z + p4.z) / 4;
+
+                            elements.push({
+                                type: 'slab',
+                                points: [p1, p2, p3, p4],
+                                z: avgZ,
+                                storey: s
+                            });
+                        }
+                    }
+                }
+
+                // Beams at this level (except ground)
+                if (s > 0) {
+
+                    // X-direction beams
+                    for (let yi = 0; yi <= state.yBays; yi++) {
+                        for (let xi = 0; xi < state.xBays; xi++) {
+                            if (isColumnEnabled(xi, yi) && isColumnEnabled(xi + 1, yi)) {
+                                const pos1 = getColPos(xi, yi);
+                                const pos2 = getColPos(xi + 1, yi);
+                                const p1 = project(pos1.x, z, pos1.y);
+                                const p2 = project(pos2.x, z, pos2.y);
+
+                                elements.push({
+                                    type: 'beam-x',
+                                    p1, p2,
+                                    z: (p1.z + p2.z) / 2
+                                });
+                            }
+                        }
+                    }
+
+                    // Y-direction beams
+                    for (let xi = 0; xi <= state.xBays; xi++) {
+                        for (let yi = 0; yi < state.yBays; yi++) {
+                            if (isColumnEnabled(xi, yi) && isColumnEnabled(xi, yi + 1)) {
+                                const pos1 = getColPos(xi, yi);
+                                const pos2 = getColPos(xi, yi + 1);
+                                const p1 = project(pos1.x, z, pos1.y);
+                                const p2 = project(pos2.x, z, pos2.y);
+
+                                elements.push({
+                                    type: 'beam-y',
+                                    p1, p2,
+                                    z: (p1.z + p2.z) / 2
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Columns (from footing to roof) - includes embedded portion below ground
+            const footingDepth = 1.5; // 1.5m below ground level (embedded in footing)
+            for (let yi = 0; yi <= state.yBays; yi++) {
+                for (let xi = 0; xi <= state.xBays; xi++) {
+                    if (isColumnEnabled(xi, yi)) {
+                        const pos = getColPos(xi, yi);
+
+                        // Embedded portion (below ground)
+                        const pBase = project(pos.x, -footingDepth, pos.y);
+                        const pGround = project(pos.x, 0, pos.y);
+                        elements.push({
+                            type: 'column-embedded',
+                            p1: pBase, p2: pGround,
+                            z: (pBase.z + pGround.z) / 2
+                        });
+
+                        // Main column (above ground)
+                        const p1 = project(pos.x, 0, pos.y);
+                        const p2 = project(pos.x, state.storeys * state.floorHeight, pos.y);
+
+                        elements.push({
+                            type: 'column',
+                            p1, p2,
+                            z: (p1.z + p2.z) / 2,
+                            id: `${letters[xi]}${yi + 1}`
+                        });
+                    }
+                }
+            }
+
+            // Sort by depth (far to near)
+            elements.sort((a, b) => b.z - a.z);
+
+            // Draw elements
+            for (let elem of elements) {
+                if (elem.type === 'slab') {
+                    ctx.fillStyle = `rgba(100, 220, 180, ${0.12 + elem.storey * 0.03
+                        })`;
+                    ctx.strokeStyle = 'rgba(100, 220, 180, 0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(elem.points[0].x, elem.points[0].y);
+
+                    for (let i = 1; i < elem.points.length; i++) {
+                        ctx.lineTo(elem.points[i].x, elem.points[i].y);
+                    }
+
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                else if (elem.type === 'beam-x') {
+                    ctx.strokeStyle = '#ff9500';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(elem.p1.x, elem.p1.y);
+                    ctx.lineTo(elem.p2.x, elem.p2.y);
+                    ctx.stroke();
+                }
+
+                else if (elem.type === 'beam-y') {
+                    ctx.strokeStyle = '#00c853';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(elem.p1.x, elem.p1.y);
+                    ctx.lineTo(elem.p2.x, elem.p2.y);
+                    ctx.stroke();
+                }
+
+                else if (elem.type === 'column-embedded') {
+                    // Embedded portion below ground - dashed line
+                    ctx.strokeStyle = '#9C27B0';
+                    ctx.lineWidth = 4;
+                    ctx.setLineDash([5, 5]);  // Dashed for below-ground
+                    ctx.beginPath();
+                    ctx.moveTo(elem.p1.x, elem.p1.y);
+                    ctx.lineTo(elem.p2.x, elem.p2.y);
+                    ctx.stroke();
+                    ctx.setLineDash([]);  // Reset to solid
+
+                    // Footing marker at bottom
+                    ctx.fillStyle = '#666';
+                    ctx.fillRect(elem.p1.x - 10, elem.p1.y - 3, 20, 6);
+                }
+
+                else if (elem.type === 'column') {
+                    ctx.strokeStyle = '#9C27B0';  // Magenta purple - distinct from all others
+                    ctx.lineWidth = 6;
+                    ctx.beginPath();
+                    ctx.moveTo(elem.p1.x, elem.p1.y);
+                    ctx.lineTo(elem.p2.x, elem.p2.y);
+                    ctx.stroke();
+
+                    // Column base marker (at ground level)
+                    ctx.fillStyle = '#9C27B0';
+                    ctx.beginPath();
+                    ctx.arc(elem.p1.x, elem.p1.y, 6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // Draw ground grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+
+            for (let xi = 0; xi <= state.xBays; xi++) {
+                const pos1 = getColPos(xi, 0);
+                const pos2 = getColPos(xi, state.yBays);
+                const p1 = project(pos1.x, 0, pos1.y);
+                const p2 = project(pos2.x, 0, pos2.y);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+
+            for (let yi = 0; yi <= state.yBays; yi++) {
+                const pos1 = getColPos(0, yi);
+                const pos2 = getColPos(state.xBays, yi);
+                const p1 = project(pos1.x, 0, pos1.y);
+                const p2 = project(pos2.x, 0, pos2.y);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+
+            // Draw gridline labels (engineering standard)
+            // Uses 'letters' variable defined at start of draw(): 'ABCDEFGHJKLMNPQRSTUVWXYZ' (skips I and O)
+
+            // X-axis labels (A, B, C...) - at far end
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let xi = 0; xi <= state.xBays; xi++) {
+                const pos = getColPos(xi, state.yBays);
+                const p = project(pos.x, 0, pos.y + 1.5);  // Offset from grid
+
+                // Circle marker
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#9C27B0';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = '#fff';
+                ctx.fillText(letters[xi], p.x, p.y);
+            }
+
+            // Y-axis labels (1, 2, 3...) - at left side
+            for (let yi = 0; yi <= state.yBays; yi++) {
+                const pos = getColPos(0, yi);
+                const p = project(pos.x - 1.5, 0, pos.y);  // Offset from grid
+
+                // Circle marker
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#00c853';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = '#fff';
+                ctx.fillText((yi + 1).toString(), p.x, p.y);
+            }
+        }
+
+        // View controls
+        function setView(view) {
+            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            state.isRotating = false;
+
+            switch (view) {
+                case 'perspective': rotation = {
+                    x: -0.5, y: 0.5
+                }
+
+                    ;
+                    break;
+
+                case 'front': rotation = {
+                    x: 0, y: 0
+                }
+
+                    ;
+                    break;
+
+                case 'side': rotation = {
+                    x: 0, y: Math.PI / 2
+                }
+
+                    ;
+                    break;
+
+                case 'top': rotation = {
+                    x: -Math.PI / 2 + 0.01, y: 0
+                }
+
+                    ;
+                    break;
+            }
+        }
+
+        function toggleSlabs() {
+            state.showSlabs = !state.showSlabs;
+            event.target.classList.toggle('active', state.showSlabs);
+        }
+
+        function toggleAnimation() {
+            state.isRotating = !state.isRotating;
+            event.target.classList.toggle('active', state.isRotating);
+        }
+
+        function exportModel() {
+            const data = {
+                grid: {
+                    xBays: state.xBays,
+                    yBays: state.yBays,
+                    xSpan: state.xSpan,
+                    ySpan: state.ySpan
+                }
+
+                ,
+                building: {
+                    storeys: state.storeys,
+                    floorHeight: state.floorHeight
+                }
+
+                ,
+                disabledColumns: Array.from(state.disabledColumns)
+            }
+
+                ;
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], {
+                type: 'application/json'
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'frame_model.json';
+            a.click();
+        }
+
+        // Live sync - listen for changes from Tributary Pro
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'tributaryPro3DModel') {
+                console.log('Received update from Tributary Pro!');
+                loadFromTributaryPro();
+                showToast('📥 Updated from Tributary Pro!');
+            }
+        });
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0, 200, 83, 0.9);
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                font-weight: 600;
+                z-index: 1000;
+                animation: fadeInOut 2s ease-in-out;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        // Add CSS for toast animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Check for updates on page load
+        loadFromTributaryPro();
+
+    </script>
+</body>
+
+</html>

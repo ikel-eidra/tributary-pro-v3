@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tributary Pro v2.0 | Structural Load Analysis</title>
+    <title>Tributary Pro v2.2 | Structural Load Analysis</title>
     <style>
         /* ========== RESET & VARIABLES ========== */
         * {
@@ -373,7 +373,7 @@
     <header class="header">
         <div class="logo">
             <div class="logo-icon">📐</div>
-            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.0</span></h1>
+            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.2</span></h1>
         </div>
         <div class="header-actions">
             <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
@@ -448,6 +448,7 @@
                 <button class="tool-btn" onclick="zoomIn()">➕ Zoom In</button>
                 <button class="tool-btn" onclick="zoomOut()">➖ Zoom Out</button>
                 <button class="tool-btn" onclick="fitView()">⊡ Fit</button>
+                <button class="tool-btn active" id="toggleAreas" onclick="toggleAreas()">🔺 Areas</button>
                 <button class="tool-btn" id="toggleLabels" onclick="toggleLabels()">🏷️ Labels</button>
             </div>
             <div class="canvas-wrapper">
@@ -557,7 +558,8 @@
             scale: 50,
             offsetX: 100,
             offsetY: 100,
-            showLabels: true
+            showLabels: true,
+            showAreas: true  // v2.2: show slice polygons by default
         };
 
         const MIN_SPAN = 0.25; // m, guard against zero/negative spans
@@ -758,8 +760,8 @@
 
         /**
          * Step 3 & 4: Generate beams and calculate tributary widths
-         * For 2-way slabs: Use 45° rule for triangular/trapezoidal distribution
-         * For simplicity in v2.0: Convert to equivalent uniform load
+         * v2.2: Now creates slices per slab with proper 45° math
+         * Short span direction gets MORE load (stiffer)
          */
         function generateBeams(pu) {
             state.beams = [];
@@ -770,7 +772,7 @@
             const yCoords = [0];
             for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
 
-            // Create beam objects with zero tributary areas first
+            // Create beam objects with slices array
             for (let yi = 0; yi < yCoords.length; yi++) {
                 for (let xi = 0; xi < state.xSpans.length; xi++) {
                     const beamSpan = state.xSpans[xi];
@@ -787,6 +789,7 @@
                         span: beamSpan,
                         tributaryWidth: 0,
                         tributaryArea: 0,
+                        slices: [],  // v2.2: per-slab slices
                         w: 0,
                         Rleft: 0,
                         Rright: 0
@@ -811,6 +814,7 @@
                         span: beamSpan,
                         tributaryWidth: 0,
                         tributaryArea: 0,
+                        slices: [],  // v2.2: per-slab slices
                         w: 0,
                         Rleft: 0,
                         Rright: 0
@@ -821,48 +825,94 @@
             // Map for quick access
             const beamMap = Object.fromEntries(state.beams.map(beam => [beam.id, beam]));
 
-            // Distribute slab areas to adjacent beams
+            // v2.2: Distribute slab areas with proper slices
             for (let slab of state.slabs) {
                 const topBeamId = `BX-${slab.yi + 1}-${slab.xi + 1}`;
                 const bottomBeamId = `BX-${slab.yi + 2}-${slab.xi + 1}`;
                 const leftBeamId = `BY-${slab.xi + 1}-${slab.yi + 1}`;
                 const rightBeamId = `BY-${slab.xi + 2}-${slab.yi + 1}`;
 
+                // Slab coordinates
+                const x0 = slab.x1, x1 = slab.x2;
+                const y0 = slab.y1, y1 = slab.y2;
+                const cx_mid = (x0 + x1) / 2;
+                const cy_mid = (y0 + y1) / 2;
+
+                // Helper to create polygon and compute centroid
+                function makeSlice(beamId, side, areaSide, poly) {
+                    const beam = beamMap[beamId];
+                    if (!beam) return;
+
+                    const tribWidth = areaSide / beam.span;
+                    const w = pu * tribWidth;
+
+                    // Compute centroid for label placement
+                    let cx = 0, cy = 0;
+                    for (let pt of poly) { cx += pt.x; cy += pt.y; }
+                    cx /= poly.length;
+                    cy /= poly.length;
+
+                    beam.tributaryArea += areaSide;
+                    beam.slices.push({
+                        slabId: slab.id,
+                        side: side,
+                        area: areaSide,
+                        w: w,
+                        poly: poly,
+                        cx: cx,
+                        cy: cy
+                    });
+                }
+
                 if (slab.isTwoWay) {
                     const triHeight = Math.min(slab.lx, slab.ly) / 2;
 
                     // Provisional areas based on 45° triangular/trapezoidal geometry
-                    const xSideArea = slab.lx * triHeight / 2; // triangle
+                    const xSideArea_raw = slab.lx * triHeight / 2; // triangle for X-beams (top/bottom)
                     const trapBase = slab.ly;
                     const trapTop = slab.ly - 2 * triHeight;
-                    const ySideArea = trapTop > 0
-                        ? (trapBase + trapTop) * triHeight / 2
-                        : slab.ly * triHeight / 2; // triangle when lines meet before midspan
+                    const ySideArea_raw = trapTop > 0
+                        ? (trapBase + trapTop) * triHeight / 2  // trapezoid for Y-beams
+                        : slab.ly * triHeight / 2;              // triangle when lines meet
 
-                    // Normalize so the four areas sum to the slab area
-                    const provisionalTotal = 2 * xSideArea + 2 * ySideArea;
-                    const scale = provisionalTotal > 0 ? slab.area / provisionalTotal : 0;
+                    // Normalize so total = slab.area
+                    const rawTotal = 2 * xSideArea_raw + 2 * ySideArea_raw;
+                    const scale = rawTotal > 0 ? slab.area / rawTotal : 0;
 
-                    const addToBeam = (id, area) => {
-                        if (beamMap[id]) beamMap[id].tributaryArea += area * scale;
-                    };
+                    const A_top = xSideArea_raw * scale;
+                    const A_bottom = xSideArea_raw * scale;
+                    const A_left = ySideArea_raw * scale;
+                    const A_right = ySideArea_raw * scale;
 
-                    addToBeam(topBeamId, xSideArea);
-                    addToBeam(bottomBeamId, xSideArea);
-                    addToBeam(leftBeamId, ySideArea);
-                    addToBeam(rightBeamId, ySideArea);
+                    // Triangle polygons for visualization
+                    const topPoly = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: cx_mid, y: cy_mid }];
+                    const bottomPoly = [{ x: x0, y: y1 }, { x: x1, y: y1 }, { x: cx_mid, y: cy_mid }];
+                    const leftPoly = [{ x: x0, y: y0 }, { x: x0, y: y1 }, { x: cx_mid, y: cy_mid }];
+                    const rightPoly = [{ x: x1, y: y0 }, { x: x1, y: y1 }, { x: cx_mid, y: cy_mid }];
+
+                    // Add slices with correct areas (NOT equal!)
+                    makeSlice(topBeamId, 'top', A_top, topPoly);
+                    makeSlice(bottomBeamId, 'bottom', A_bottom, bottomPoly);
+                    makeSlice(leftBeamId, 'left', A_left, leftPoly);
+                    makeSlice(rightBeamId, 'right', A_right, rightPoly);
                 } else {
-                    // One-way spanning: load goes to beams parallel to long direction
-                    const addToBeam = (id) => {
-                        if (beamMap[id]) beamMap[id].tributaryArea += slab.area / 2;
-                    };
+                    // One-way slab: split into 2 rectangles
+                    const halfArea = slab.area / 2;
 
                     if (slab.lx < slab.ly) {
-                        addToBeam(leftBeamId);
-                        addToBeam(rightBeamId);
+                        // Spanning in Y, supported by left/right beams
+                        const midX = (x0 + x1) / 2;
+                        const leftPoly = [{ x: x0, y: y0 }, { x: midX, y: y0 }, { x: midX, y: y1 }, { x: x0, y: y1 }];
+                        const rightPoly = [{ x: midX, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: midX, y: y1 }];
+                        makeSlice(leftBeamId, 'left', halfArea, leftPoly);
+                        makeSlice(rightBeamId, 'right', halfArea, rightPoly);
                     } else {
-                        addToBeam(topBeamId);
-                        addToBeam(bottomBeamId);
+                        // Spanning in X, supported by top/bottom beams
+                        const midY = (y0 + y1) / 2;
+                        const topPoly = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: midY }, { x: x0, y: midY }];
+                        const bottomPoly = [{ x: x0, y: midY }, { x: x1, y: midY }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+                        makeSlice(topBeamId, 'top', halfArea, topPoly);
+                        makeSlice(bottomBeamId, 'bottom', halfArea, bottomPoly);
                     }
                 }
             }
@@ -999,6 +1049,59 @@
                 ctx.strokeRect(x1, y1, w, h);
             }
 
+            // v2.2: Draw slice polygons when Areas is ON
+            if (state.showAreas) {
+                for (let beam of state.beams) {
+                    for (let slice of beam.slices) {
+                        // Draw polygon
+                        ctx.beginPath();
+                        const firstPt = slice.poly[0];
+                        ctx.moveTo(
+                            firstPt.x * state.scale + state.offsetX,
+                            firstPt.y * state.scale + state.offsetY
+                        );
+                        for (let i = 1; i < slice.poly.length; i++) {
+                            const pt = slice.poly[i];
+                            ctx.lineTo(
+                                pt.x * state.scale + state.offsetX,
+                                pt.y * state.scale + state.offsetY
+                            );
+                        }
+                        ctx.closePath();
+
+                        // Color by beam direction
+                        const isXBeam = beam.direction === 'X';
+                        ctx.fillStyle = isXBeam ? 'rgba(124, 58, 237, 0.25)' : 'rgba(16, 185, 129, 0.25)';
+                        ctx.fill();
+                        ctx.strokeStyle = isXBeam ? 'rgba(124, 58, 237, 0.6)' : 'rgba(16, 185, 129, 0.6)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        // Centroid marker and label
+                        const cx = slice.cx * state.scale + state.offsetX;
+                        const cy = slice.cy * state.scale + state.offsetY;
+
+                        // White dot at centroid
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+                        ctx.fillStyle = '#fff';
+                        ctx.fill();
+
+                        // Label at centroid
+                        if (state.showLabels) {
+                            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                            ctx.fillRect(cx - 32, cy - 18, 64, 22);
+                            ctx.fillStyle = '#00d4ff';
+                            ctx.font = '9px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(`A=${slice.area.toFixed(1)}m²`, cx, cy - 6);
+                            ctx.fillStyle = '#f59e0b';
+                            ctx.fillText(`w=${slice.w.toFixed(1)}kN/m`, cx, cy + 6);
+                        }
+                    }
+                }
+            }
+
             // Draw beams
             ctx.lineWidth = 3;
             for (let beam of state.beams) {
@@ -1072,6 +1175,14 @@
         function toggleLabels() {
             state.showLabels = !state.showLabels;
             document.getElementById('toggleLabels').classList.toggle('active', state.showLabels);
+            draw();
+        }
+
+        // v2.2: Toggle Areas visualization
+        function toggleAreas() {
+            state.showAreas = !state.showAreas;
+            const btn = document.getElementById('toggleAreas');
+            if (btn) btn.classList.toggle('active', state.showAreas);
             draw();
         }
 

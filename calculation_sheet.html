@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSCP Calculation Sheet Generator | Pang-Masa Engineering</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+                color: #000;
+            }
+
+            .no-print {
+                display: none !important;
+            }
+
+            .calc-sheet {
+                box-shadow: none;
+                border: 1px solid #000;
+            }
+        }
+
+        .header {
+            background: rgba(20, 20, 30, 0.95);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .logo h1 span {
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #ff6b35, #f7931e);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 107, 53, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 110px);
+        }
+
+        .panel {
+            background: rgba(20, 20, 30, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+            max-height: calc(100vh - 150px);
+        }
+
+        .panel-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #ff6b35;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .param-group {
+            margin-bottom: 20px;
+        }
+
+        .param-group h3 {
+            font-size: 0.75rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .param-item {
+            margin-bottom: 12px;
+        }
+
+        .param-item label {
+            display: block;
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .param-item input,
+        .param-item select,
+        .param-item textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .param-item textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        /* Calculation Sheet Styles */
+        .sheet-container {
+            background: #fff;
+            border-radius: 8px;
+            overflow-y: auto;
+            max-height: calc(100vh - 150px);
+        }
+
+        .calc-sheet {
+            background: #fff;
+            color: #000;
+            padding: 40px;
+            font-family: 'Times New Roman', serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            min-height: 100%;
+        }
+
+        .sheet-header {
+            text-align: center;
+            border-bottom: 3px double #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .sheet-title {
+            font-size: 16pt;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        .sheet-subtitle {
+            font-size: 12pt;
+            margin-top: 5px;
+        }
+
+        .project-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px 20px;
+            border: 1px solid #000;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 10pt;
+        }
+
+        .project-info div {
+            display: flex;
+        }
+
+        .project-info span:first-child {
+            font-weight: bold;
+            min-width: 100px;
+        }
+
+        .section-title {
+            background: #f0f0f0;
+            padding: 5px 10px;
+            font-weight: bold;
+            border: 1px solid #000;
+            margin: 15px 0 10px 0;
+        }
+
+        .calc-row {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .calc-formula {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            margin: 5px 0;
+            padding: 5px 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #ff6b35;
+        }
+
+        .nscp-ref {
+            color: #0066cc;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        .result-ok {
+            color: #008800;
+            font-weight: bold;
+        }
+
+        .result-fail {
+            color: #cc0000;
+            font-weight: bold;
+        }
+
+        .conclusion-box {
+            border: 2px solid #000;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .signature-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 20px;
+        }
+
+        .signature-line {
+            text-align: center;
+        }
+
+        .signature-line .line {
+            border-top: 1px solid #000;
+            margin: 40px 20px 5px 20px;
+        }
+
+        .signature-line .name {
+            font-weight: bold;
+        }
+
+        .signature-line .title {
+            font-size: 9pt;
+        }
+
+        .qr-placeholder {
+            width: 80px;
+            height: 80px;
+            border: 1px dashed #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8pt;
+            color: #999;
+            margin: 10px auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header no-print">
+        <div class="logo">
+            <div class="logo-icon">📄</div>
+            <h1>NSCP <span>Calculation Sheet</span></h1>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="loadFromFootingDesign()">📥 Load from Footing Design</button>
+            <button class="btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="no-print"
+        style="background: rgba(10,10,15,0.95); padding: 8px 20px; display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap;">
+        <a href="tributary_pro.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">📐
+            Tributary Pro</a>
+        <a href="frame_viewer_3d.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">🏗️
+            3D Viewer</a>
+        <a href="footing_design.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">🔳
+            Footing Design</a>
+        <a href="foundation_plan.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">📋
+            Foundation Plan</a>
+        <a href="calculation_sheet.html"
+            style="padding: 6px 14px; background: linear-gradient(135deg, #ff6b35, #f7931e); border-radius: 6px; color: #fff; text-decoration: none; font-size: 0.8rem; font-weight: 600;">📄
+            Calc Sheet</a>
+        <span style="flex: 1;"></span>
+        <span style="color: #8b949e; font-size: 0.7rem; align-self: center;">🚀 Pang-Masa Engineering Suite v0.1</span>
+    </nav>
+
+    <div class="app-container no-print">
+        <!-- Left Panel - Inputs -->
+        <div class="panel">
+            <div class="panel-header">📋 Project Information</div>
+
+            <div class="param-item">
+                <label>Project Name</label>
+                <input type="text" id="projectName" value="Proposed Two-Storey Residential Building"
+                    onchange="generate()">
+            </div>
+            <div class="param-item">
+                <label>Project Location</label>
+                <input type="text" id="projectLocation" value="Brgy. Sample, City, Province" onchange="generate()">
+            </div>
+            <div class="param-item">
+                <label>Owner</label>
+                <input type="text" id="owner" value="Mr. Juan Dela Cruz" onchange="generate()">
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Date</label>
+                    <input type="date" id="calcDate" onchange="generate()">
+                </div>
+                <div class="param-item">
+                    <label>Sheet No.</label>
+                    <input type="text" id="sheetNo" value="F-01" onchange="generate()">
+                </div>
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">📐 Design Data</div>
+
+            <div class="param-item">
+                <label>Column ID</label>
+                <input type="text" id="columnId" value="C1" onchange="generate()">
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Dead Load (kN)</label>
+                    <input type="number" id="deadLoad" value="300" step="10" onchange="generate()">
+                </div>
+                <div class="param-item">
+                    <label>Live Load (kN)</label>
+                    <input type="number" id="liveLoad" value="200" step="10" onchange="generate()">
+                </div>
+            </div>
+
+            <div class="param-item">
+                <label>Occupancy Type (NSCP Table 205-1)</label>
+                <select id="occupancy" onchange="updateLiveLoad()">
+                    <option value="1.9">Residential - 1.9 kPa</option>
+                    <option value="2.4">Office - 2.4 kPa</option>
+                    <option value="4.8">Retail/Store - 4.8 kPa</option>
+                    <option value="2.9">Assembly (fixed seats) - 2.9 kPa</option>
+                    <option value="4.8">Assembly (movable) - 4.8 kPa</option>
+                    <option value="1.9">Schools/Classroom - 1.9 kPa</option>
+                    <option value="6.0">Storage (light) - 6.0 kPa</option>
+                    <option value="12.0">Storage (heavy) - 12.0 kPa</option>
+                </select>
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Soil Bearing qa (kPa)</label>
+                    <input type="number" id="soilCapacity" value="100" step="10" onchange="generate()">
+                </div>
+                <div class="param-item">
+                    <label>Column Size (mm)</label>
+                    <input type="number" id="colSize" value="400" step="50" onchange="generate()">
+                </div>
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>f'c (MPa)</label>
+                    <input type="number" id="fc" value="21" step="1" onchange="generate()">
+                </div>
+                <div class="param-item">
+                    <label>fy (MPa)</label>
+                    <input type="number" id="fy" value="275" step="5" onchange="generate()">
+                </div>
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Footing L (m)</label>
+                    <input type="number" id="footingL" value="2.0" step="0.1" onchange="generate()">
+                </div>
+                <div class="param-item">
+                    <label>Footing B (m)</label>
+                    <input type="number" id="footingB" value="2.0" step="0.1" onchange="generate()">
+                </div>
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Footing h (mm)</label>
+                    <input type="number" id="footingH" value="450" step="50" onchange="generate()">
+                </div>
+                <div class="param-item">
+                    <label>Cover (mm)</label>
+                    <input type="number" id="cover" value="75" step="5" onchange="generate()">
+                </div>
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">✍️ Engineer Information</div>
+
+            <div class="param-item">
+                <label>Structural Engineer Name</label>
+                <input type="text" id="engineerName" value="" placeholder="Engr. _____________" onchange="generate()">
+            </div>
+            <div class="param-item">
+                <label>PRC License No.</label>
+                <input type="text" id="prcNo" value="" placeholder="License No." onchange="generate()">
+            </div>
+            <div class="param-item">
+                <label>PTR No.</label>
+                <input type="text" id="ptrNo" value="" placeholder="PTR No." onchange="generate()">
+            </div>
+        </div>
+
+        <!-- Right Panel - Sheet Preview -->
+        <div class="sheet-container" id="sheetContainer">
+            <!-- Generated calculation sheet will appear here -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set today's date
+            document.getElementById('calcDate').valueAsDate = new Date();
+            generate();
+        });
+
+        function generate() {
+            // Get inputs
+            const projectName = document.getElementById('projectName').value;
+            const projectLocation = document.getElementById('projectLocation').value;
+            const owner = document.getElementById('owner').value;
+            const calcDate = document.getElementById('calcDate').value;
+            const sheetNo = document.getElementById('sheetNo').value;
+            const columnId = document.getElementById('columnId').value;
+
+            const DL = parseFloat(document.getElementById('deadLoad').value) || 300;
+            const LL = parseFloat(document.getElementById('liveLoad').value) || 200;
+            const qa = parseFloat(document.getElementById('soilCapacity').value) || 100;
+            const colSize = parseFloat(document.getElementById('colSize').value) || 400;
+            const fc = parseFloat(document.getElementById('fc').value) || 21;
+            const fy = parseFloat(document.getElementById('fy').value) || 275;
+            const L = parseFloat(document.getElementById('footingL').value) || 2.0;
+            const B = parseFloat(document.getElementById('footingB').value) || 2.0;
+            const h = parseFloat(document.getElementById('footingH').value) || 450;
+            const cover = parseFloat(document.getElementById('cover').value) || 75;
+
+            const engineerName = document.getElementById('engineerName').value || '_________________________';
+            const prcNo = document.getElementById('prcNo').value || '__________';
+            const ptrNo = document.getElementById('ptrNo').value || '__________';
+
+            // Calculations
+            const Pu = 1.2 * DL + 1.6 * LL; // Factored load
+            const Pa = DL + LL; // Service load
+            const Areq = Pa / qa;
+            const Aprov = L * B;
+            const qu = Pu / Aprov; // Factored soil pressure
+            const quService = Pa / Aprov;
+
+            const c = colSize / 1000;
+            const d = (h - cover - 16) / 1000; // Effective depth
+
+            // Punching shear
+            const bo = 4 * (c + d);
+            const Vu_punch = Pu - qu * (c + d) * (c + d);
+            const vu_punch = (Vu_punch * 1000) / (bo * d * 1000000);
+            const phi_v = 0.75;
+            const Vc_punch = phi_v * 0.33 * Math.sqrt(fc);
+            const punchingOK = vu_punch <= Vc_punch;
+
+            // One-way shear
+            const x_crit = (L - c) / 2 - d;
+            const Vu_1way = qu * B * x_crit;
+            const vu_1way = (Vu_1way * 1000) / (B * d * 1000000);
+            const Vc_1way = phi_v * 0.17 * Math.sqrt(fc);
+            const shearOK = vu_1way <= Vc_1way;
+
+            // Flexure
+            const lx = (L - c) / 2;
+            const Mu = qu * B * lx * lx / 2;
+            const phi_f = 0.90;
+            const Ru = Mu / (phi_f * B * d * d * 1000);
+            let rho = 0.85 * fc / fy * (1 - Math.sqrt(1 - 2 * Ru / (0.85 * fc)));
+            const rho_min = Math.max(0.25 * Math.sqrt(fc) / fy, 1.4 / fy);
+            if (isNaN(rho) || rho < rho_min) rho = rho_min;
+            const As = rho * B * d * 1000000;
+
+            // Rebar
+            const barDia = 16;
+            const barArea = Math.PI * barDia * barDia / 4;
+            const nBars = Math.ceil(As / barArea);
+            const spacing = Math.floor((B * 1000 - 2 * cover) / (nBars - 1));
+
+            const allOK = quService <= qa && punchingOK && shearOK;
+
+            // Generate HTML
+            const sheet = `
+            <div class="calc-sheet">
+                <div class="sheet-header">
+                    <div class="sheet-title">STRUCTURAL CALCULATION SHEET</div>
+                    <div class="sheet-subtitle">ISOLATED FOOTING DESIGN</div>
+                </div>
+
+                <div class="project-info">
+                    <div><span>Project:</span> ${projectName}</div>
+                    <div><span>Date:</span> ${calcDate}</div>
+                    <div><span>Location:</span> ${projectLocation}</div>
+                    <div><span>Sheet No.:</span> ${sheetNo}</div>
+                    <div><span>Owner:</span> ${owner}</div>
+                    <div><span>Column:</span> ${columnId}</div>
+                </div>
+
+                <div class="section-title">1. DESIGN DATA</div>
+                <div class="calc-row">
+                    <strong>Design Code:</strong> NSCP 2015 (National Structural Code of the Philippines)
+                </div>
+                <div class="calc-row">
+                    <strong>Dead Load, DL</strong> = ${DL.toFixed(0)} kN
+                </div>
+                <div class="calc-row">
+                    <strong>Live Load, LL</strong> = ${LL.toFixed(0)} kN <span class="nscp-ref">[NSCP Table 205-1]</span>
+                </div>
+                <div class="calc-row">
+                    <strong>Soil Bearing Capacity, qa</strong> = ${qa.toFixed(0)} kPa (per Geotechnical Report)
+                </div>
+                <div class="calc-row">
+                    <strong>Concrete Strength, f'c</strong> = ${fc} MPa <span class="nscp-ref">[NSCP Table 419.2.1.1]</span>
+                </div>
+                <div class="calc-row">
+                    <strong>Steel Yield Strength, fy</strong> = ${fy} MPa (Grade 40)
+                </div>
+                <div class="calc-row">
+                    <strong>Column Size</strong> = ${colSize} mm × ${colSize} mm
+                </div>
+
+                <div class="section-title">2. LOAD COMBINATION <span class="nscp-ref">[NSCP 203.3.1]</span></div>
+                <div class="calc-row">
+                    Service Load: P<sub>a</sub> = DL + LL = ${DL.toFixed(0)} + ${LL.toFixed(0)} = <strong>${Pa.toFixed(0)} kN</strong>
+                </div>
+                <div class="calc-row">
+                    Factored Load: P<sub>u</sub> = 1.2DL + 1.6LL <span class="nscp-ref">[NSCP 203.3.1]</span>
+                </div>
+                <div class="calc-formula">
+                    P<sub>u</sub> = 1.2(${DL.toFixed(0)}) + 1.6(${LL.toFixed(0)}) = <strong>${Pu.toFixed(0)} kN</strong>
+                </div>
+
+                <div class="section-title">3. FOOTING SIZE <span class="nscp-ref">[NSCP 413.3.1]</span></div>
+                <div class="calc-row">
+                    Required Area: A<sub>req</sub> = P<sub>a</sub> / q<sub>a</sub>
+                </div>
+                <div class="calc-formula">
+                    A<sub>req</sub> = ${Pa.toFixed(0)} / ${qa} = ${Areq.toFixed(2)} m²
+                </div>
+                <div class="calc-row">
+                    <strong>Use:</strong> ${L.toFixed(1)}m × ${B.toFixed(1)}m × ${h}mm thick footing
+                </div>
+                <div class="calc-row">
+                    Provided Area: A<sub>prov</sub> = ${L.toFixed(1)} × ${B.toFixed(1)} = <strong>${Aprov.toFixed(2)} m²</strong>
+                </div>
+                <div class="calc-row">
+                    Check: A<sub>prov</sub> = ${Aprov.toFixed(2)} m² ${Aprov >= Areq ? '≥' : '<'} A<sub>req</sub> = ${Areq.toFixed(2)} m² 
+                    <span class="${Aprov >= Areq ? 'result-ok' : 'result-fail'}">${Aprov >= Areq ? '✓ OK' : '✗ NG'}</span>
+                </div>
+                <div class="calc-row">
+                    Service Soil Pressure: q = P<sub>a</sub>/A = ${Pa.toFixed(0)}/${Aprov.toFixed(2)} = ${quService.toFixed(1)} kPa
+                    ${quService <= qa ? '≤' : '>'} q<sub>a</sub> = ${qa} kPa
+                    <span class="${quService <= qa ? 'result-ok' : 'result-fail'}">${quService <= qa ? '✓ OK' : '✗ NG'}</span>
+                </div>
+
+                <div class="section-title">4. PUNCHING SHEAR CHECK <span class="nscp-ref">[NSCP 422.6.5]</span></div>
+                <div class="calc-row">
+                    Effective Depth: d = h - cover - db/2 = ${h} - ${cover} - 8 = <strong>${(d * 1000).toFixed(0)} mm</strong>
+                </div>
+                <div class="calc-row">
+                    Critical Perimeter: b<sub>o</sub> = 4(c + d) = 4(${(c * 1000).toFixed(0)} + ${(d * 1000).toFixed(0)}) = <strong>${(bo * 1000).toFixed(0)} mm</strong>
+                </div>
+                <div class="calc-row">
+                    Factored Soil Pressure: q<sub>u</sub> = P<sub>u</sub>/A = ${Pu.toFixed(0)}/${Aprov.toFixed(2)} = ${qu.toFixed(1)} kPa
+                </div>
+                <div class="calc-row">
+                    Punching Shear Force: V<sub>u</sub> = P<sub>u</sub> - q<sub>u</sub>(c+d)²
+                </div>
+                <div class="calc-formula">
+                    V<sub>u</sub> = ${Pu.toFixed(0)} - ${qu.toFixed(1)} × (${(c + d).toFixed(3)})² = <strong>${Vu_punch.toFixed(1)} kN</strong>
+                </div>
+                <div class="calc-row">
+                    Shear Stress: v<sub>u</sub> = V<sub>u</sub>/(b<sub>o</sub> × d)
+                </div>
+                <div class="calc-formula">
+                    v<sub>u</sub> = ${(Vu_punch * 1000).toFixed(0)} / (${(bo * 1000).toFixed(0)} × ${(d * 1000).toFixed(0)}) = <strong>${vu_punch.toFixed(3)} MPa</strong>
+                </div>
+                <div class="calc-row">
+                    Allowable: φV<sub>c</sub> = φ × 0.33√f'c = ${phi_v} × 0.33 × √${fc} = <strong>${Vc_punch.toFixed(3)} MPa</strong>
+                    <span class="nscp-ref">[NSCP 422.6.5.2]</span>
+                </div>
+                <div class="calc-row">
+                    Check: v<sub>u</sub> = ${vu_punch.toFixed(3)} MPa ${punchingOK ? '≤' : '>'} φV<sub>c</sub> = ${Vc_punch.toFixed(3)} MPa
+                    <span class="${punchingOK ? 'result-ok' : 'result-fail'}">${punchingOK ? '✓ OK' : '✗ NG - Increase depth'}</span>
+                </div>
+
+                <div class="section-title">5. ONE-WAY SHEAR CHECK <span class="nscp-ref">[NSCP 422.5]</span></div>
+                <div class="calc-row">
+                    Critical Section at d from column face
+                </div>
+                <div class="calc-row">
+                    x = (L - c)/2 - d = (${L.toFixed(2)} - ${c.toFixed(2)})/2 - ${d.toFixed(3)} = ${x_crit.toFixed(3)} m
+                </div>
+                <div class="calc-row">
+                    Shear Force: V<sub>u</sub> = q<sub>u</sub> × B × x = ${qu.toFixed(1)} × ${B.toFixed(1)} × ${x_crit.toFixed(3)} = <strong>${Vu_1way.toFixed(1)} kN</strong>
+                </div>
+                <div class="calc-row">
+                    Shear Stress: v<sub>u</sub> = V<sub>u</sub>/(B × d) = ${(Vu_1way * 1000).toFixed(0)}/(${(B * 1000).toFixed(0)} × ${(d * 1000).toFixed(0)}) = <strong>${vu_1way.toFixed(3)} MPa</strong>
+                </div>
+                <div class="calc-row">
+                    Allowable: φV<sub>c</sub> = φ × 0.17√f'c = ${phi_v} × 0.17 × √${fc} = <strong>${Vc_1way.toFixed(3)} MPa</strong>
+                    <span class="nscp-ref">[NSCP 422.5.5.1]</span>
+                </div>
+                <div class="calc-row">
+                    Check: v<sub>u</sub> = ${vu_1way.toFixed(3)} MPa ${shearOK ? '≤' : '>'} φV<sub>c</sub> = ${Vc_1way.toFixed(3)} MPa
+                    <span class="${shearOK ? 'result-ok' : 'result-fail'}">${shearOK ? '✓ OK' : '✗ NG'}</span>
+                </div>
+
+                <div class="section-title">6. FLEXURAL REINFORCEMENT <span class="nscp-ref">[NSCP 422.2]</span></div>
+                <div class="calc-row">
+                    Cantilever Length: l = (L - c)/2 = (${L.toFixed(2)} - ${c.toFixed(2)})/2 = ${lx.toFixed(3)} m
+                </div>
+                <div class="calc-row">
+                    Moment: M<sub>u</sub> = q<sub>u</sub> × B × l²/2
+                </div>
+                <div class="calc-formula">
+                    M<sub>u</sub> = ${qu.toFixed(1)} × ${B.toFixed(1)} × (${lx.toFixed(3)})² / 2 = <strong>${Mu.toFixed(1)} kN·m</strong>
+                </div>
+                <div class="calc-row">
+                    R<sub>u</sub> = M<sub>u</sub>/(φ × B × d²) = ${Mu.toFixed(1)}/(${phi_f} × ${B.toFixed(1)} × ${d.toFixed(3)}²) = ${Ru.toFixed(3)} MPa
+                </div>
+                <div class="calc-row">
+                    ρ = (0.85f'c/fy)[1 - √(1 - 2R<sub>u</sub>/0.85f'c)]
+                </div>
+                <div class="calc-formula">
+                    ρ = (0.85 × ${fc}/${fy})[1 - √(1 - 2×${Ru.toFixed(3)}/0.85×${fc})] = ${(rho * 100).toFixed(4)}%
+                </div>
+                <div class="calc-row">
+                    ρ<sub>min</sub> = max(0.25√f'c/fy, 1.4/fy) = ${(rho_min * 100).toFixed(4)}%
+                    <span class="nscp-ref">[NSCP 409.6.1.2]</span>
+                </div>
+                <div class="calc-row">
+                    Use ρ = ${(Math.max(rho, rho_min) * 100).toFixed(4)}%
+                </div>
+                <div class="calc-row">
+                    A<sub>s</sub> = ρ × B × d = ${(Math.max(rho, rho_min) * 100).toFixed(4)}% × ${(B * 1000).toFixed(0)} × ${(d * 1000).toFixed(0)} = <strong>${As.toFixed(0)} mm²</strong>
+                </div>
+                <div class="calc-row">
+                    Using ${barDia}mm diameter bars: A<sub>bar</sub> = ${barArea.toFixed(0)} mm²
+                </div>
+                <div class="calc-row">
+                    Number of bars: n = ${As.toFixed(0)}/${barArea.toFixed(0)} = ${(As / barArea).toFixed(1)} → <strong>Use ${nBars} pcs</strong>
+                </div>
+                <div class="calc-row">
+                    <strong>REINFORCEMENT:</strong> ${nBars}-${barDia}mm bars @ ${spacing}mm c/c BOTH WAYS
+                </div>
+
+                <div class="conclusion-box">
+                    <strong>CONCLUSION</strong><br><br>
+                    The designed isolated footing (${L.toFixed(1)}m × ${B.toFixed(1)}m × ${h}mm) for Column ${columnId}<br>
+                    is <span class="${allOK ? 'result-ok' : 'result-fail'}" style="font-size: 14pt;">${allOK ? 'SAFE AND ADEQUATE' : 'NOT ADEQUATE - REVISE'}</span><br>
+                    per NSCP 2015 requirements.
+                </div>
+
+                <div class="signature-block">
+                    <div class="signature-line">
+                        <div class="line"></div>
+                        <div class="name">${engineerName}</div>
+                        <div class="title">Structural Engineer</div>
+                        <div class="title">PRC No. ${prcNo}</div>
+                        <div class="title">PTR No. ${ptrNo}</div>
+                    </div>
+                    <div class="signature-line">
+                        <div class="qr-placeholder">QR Code<br>Verification</div>
+                        <div class="title" style="margin-top: 10px;">Blockchain Hash:</div>
+                        <div class="title" style="font-family: monospace; font-size: 7pt;">${generateHash()}</div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 30px; font-size: 8pt; color: #666;">
+                    Generated by Pang-Masa Engineering Suite | FutolTech.com | ${new Date().toLocaleString()}
+                </div>
+            </div>
+            `;
+
+            document.getElementById('sheetContainer').innerHTML = sheet;
+        }
+
+        function generateHash() {
+            // Simple hash for demo
+            const data = Date.now().toString(36) + Math.random().toString(36).substr(2);
+            return '0x' + data.toUpperCase().substr(0, 40);
+        }
+
+        function loadFromFootingDesign() {
+            // Try to load from localStorage
+            const saved = localStorage.getItem('footingDesignData');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    // Apply data to inputs
+                    if (data.columnId) document.getElementById('columnId').value = data.columnId;
+                    if (data.axialLoad) document.getElementById('deadLoad').value = Math.round(data.axialLoad * 0.6);
+                    if (data.axialLoad) document.getElementById('liveLoad').value = Math.round(data.axialLoad * 0.4);
+                    if (data.soilCapacity) document.getElementById('soilCapacity').value = data.soilCapacity;
+                    if (data.fc) document.getElementById('fc').value = data.fc;
+                    if (data.fy) document.getElementById('fy').value = data.fy;
+                    if (data.L) document.getElementById('footingL').value = data.L;
+                    if (data.B) document.getElementById('footingB').value = data.B;
+                    if (data.h) document.getElementById('footingH').value = data.h * 1000;
+                    if (data.cover) document.getElementById('cover').value = data.cover * 1000;
+                    generate();
+                    alert('Loaded data from Footing Design!');
+                } catch (e) {
+                    alert('No saved footing data found. Please design a footing first!');
+                }
+            } else {
+                alert('No saved footing data found. Please design a footing first!');
+            }
+        }
+
+        function updateLiveLoad() {
+            // Could update live load based on occupancy
+            generate();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tributary Area Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 70px);
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .panel h2 {
+            font-size: 1rem;
+            color: #00d4ff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .input-group input,
+        .input-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .grid-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #7c3aed);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #gridCanvas {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            cursor: crosshair;
+        }
+
+        .canvas-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            margin-top: 10px;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .results-table th {
+            color: #00d4ff;
+            font-weight: 600;
+        }
+
+        .results-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.2), rgba(124, 58, 237, 0.2));
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .summary-card h3 {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .summary-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .summary-card .unit {
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .load-inputs {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .column-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .column-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .column-item .id {
+            font-weight: 600;
+            color: #00d4ff;
+        }
+
+        .column-item .area {
+            font-size: 0.9rem;
+        }
+
+        .column-item .load {
+            font-size: 0.8rem;
+            color: #7c3aed;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📐 Tributary Area Calculator</h1>
+        <span style="color: #888; font-size: 0.8rem;">Pang-Masa Construction System</span>
+    </div>
+
+    <div class="main-container">
+        <!-- Left Panel - Grid Setup -->
+        <div class="panel">
+            <h2>🏗️ Grid Setup</h2>
+
+            <div class="input-group">
+                <label>Grid Lines X (comma separated, in meters)</label>
+                <input type="text" id="gridX" value="0, 4, 8" placeholder="0, 4, 8, 12">
+            </div>
+
+            <div class="input-group">
+                <label>Grid Lines Y (comma separated, in meters)</label>
+                <input type="text" id="gridY" value="0, 3, 5.75, 8" placeholder="0, 3.5, 7">
+            </div>
+
+            <button class="btn btn-primary" onclick="generateGrid()">Generate Grid</button>
+
+            <div style="margin-top: 20px;">
+                <h2>📊 Loading</h2>
+                <div class="load-inputs">
+                    <div class="grid-inputs">
+                        <div class="input-group">
+                            <label>Dead Load (kPa)</label>
+                            <input type="number" id="deadLoad" value="5.0" step="0.1">
+                        </div>
+                        <div class="input-group">
+                            <label>Live Load (kPa)</label>
+                            <input type="number" id="liveLoad" value="2.0" step="0.1">
+                        </div>
+                    </div>
+                    <div class="grid-inputs" style="margin-top: 10px;">
+                        <div class="input-group">
+                            <label>Slab Thickness (mm)</label>
+                            <input type="number" id="slabThick" value="150" step="10">
+                        </div>
+                        <div class="input-group">
+                            <label>No. of Storeys</label>
+                            <input type="number" id="numStoreys" value="2" min="1" max="10">
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="calculateLoads()">Calculate Loads</button>
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00d4ff;"></div>
+                    <span>Column</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: rgba(124, 58, 237, 0.3);"></div>
+                    <span>Tributary Area</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center - Canvas -->
+        <div class="panel canvas-container">
+            <h2>🗺️ Floor Plan View</h2>
+            <canvas id="gridCanvas"></canvas>
+            <div class="canvas-controls">
+                <button class="btn btn-secondary" onclick="zoomIn()">🔍+</button>
+                <button class="btn btn-secondary" onclick="zoomOut()">🔍-</button>
+                <button class="btn btn-secondary" onclick="resetView()">↺ Reset</button>
+                <button class="btn btn-secondary" onclick="exportImage()">📷 Export</button>
+            </div>
+        </div>
+
+        <!-- Right Panel - Results -->
+        <div class="panel">
+            <h2>📋 Results</h2>
+
+            <div class="summary-card">
+                <h3>Total Floor Area</h3>
+                <span class="value" id="totalArea">0</span>
+                <span class="unit">m²</span>
+            </div>
+
+            <div class="summary-card">
+                <h3>Total Load per Floor</h3>
+                <span class="value" id="totalLoad">0</span>
+                <span class="unit">kN</span>
+            </div>
+
+            <h2 style="margin-top: 20px;">📍 Column Tributary Areas</h2>
+            <div class="column-list" id="columnList">
+                <!-- Will be populated dynamically -->
+            </div>
+
+            <h2 style="margin-top: 20px;">📊 Summary Table</h2>
+            <table class="results-table" id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Trib. Area</th>
+                        <th>Load/Floor</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // State
+        let gridData = {
+            xLines: [0, 4, 8],
+            yLines: [0, 3, 5.75, 8],
+            columns: [],
+            tributaryAreas: []
+        };
+        let scale = 50; // pixels per meter
+        let offsetX = 50;
+        let offsetY = 50;
+        let canvas, ctx;
+        let hoveredColumn = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('gridCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            generateGrid();
+
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('click', handleClick);
+            window.addEventListener('resize', resizeCanvas);
+        });
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight - 80;
+            draw();
+        }
+
+        function generateGrid() {
+            // Parse inputs
+            const xInput = document.getElementById('gridX').value;
+            const yInput = document.getElementById('gridY').value;
+
+            gridData.xLines = xInput.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+            gridData.yLines = yInput.split(',').map(v => parseFloat(v.trim())).filter(v => !isNaN(v));
+
+            // Sort lines
+            gridData.xLines.sort((a, b) => a - b);
+            gridData.yLines.sort((a, b) => a - b);
+
+            // Generate columns at intersections
+            gridData.columns = [];
+            let colId = 1;
+            for (let y of gridData.yLines) {
+                for (let x of gridData.xLines) {
+                    gridData.columns.push({
+                        id: `C${colId}`,
+                        x: x,
+                        y: y,
+                        tributaryArea: 0
+                    });
+                    colId++;
+                }
+            }
+
+            // Calculate tributary areas
+            calculateTributaryAreas();
+
+            // Fit view
+            fitView();
+
+            // Draw
+            draw();
+            calculateLoads();
+        }
+
+        function calculateTributaryAreas() {
+            const xLines = gridData.xLines;
+            const yLines = gridData.yLines;
+
+            for (let col of gridData.columns) {
+                // Find adjacent grid lines
+                let xIdx = xLines.indexOf(col.x);
+                let yIdx = yLines.indexOf(col.y);
+
+                // Calculate tributary widths (half distance to adjacent columns)
+                let leftDist = xIdx > 0 ? (col.x - xLines[xIdx - 1]) / 2 : 0;
+                let rightDist = xIdx < xLines.length - 1 ? (xLines[xIdx + 1] - col.x) / 2 : 0;
+                let topDist = yIdx > 0 ? (col.y - yLines[yIdx - 1]) / 2 : 0;
+                let bottomDist = yIdx < yLines.length - 1 ? (yLines[yIdx + 1] - col.y) / 2 : 0;
+
+                // Tributary dimensions
+                col.tribLeft = leftDist;
+                col.tribRight = rightDist;
+                col.tribTop = topDist;
+                col.tribBottom = bottomDist;
+                col.tribWidth = leftDist + rightDist;
+                col.tribHeight = topDist + bottomDist;
+                col.tributaryArea = col.tribWidth * col.tribHeight;
+            }
+        }
+
+        function calculateLoads() {
+            const deadLoad = parseFloat(document.getElementById('deadLoad').value) || 5.0;
+            const liveLoad = parseFloat(document.getElementById('liveLoad').value) || 2.0;
+            const slabThick = parseFloat(document.getElementById('slabThick').value) || 150;
+            const numStoreys = parseInt(document.getElementById('numStoreys').value) || 2;
+
+            // Slab self-weight
+            const slabWeight = (slabThick / 1000) * 24; // kN/m³ × m = kN/m²
+
+            // Total service load
+            const serviceLoad = deadLoad + slabWeight + liveLoad;
+
+            // Factored load
+            const factoredLoad = 1.2 * (deadLoad + slabWeight) + 1.6 * liveLoad;
+
+            // Calculate for each column
+            let totalArea = 0;
+            let totalLoadSum = 0;
+            const listHtml = [];
+            const tableHtml = [];
+
+            for (let col of gridData.columns) {
+                const loadPerFloor = col.tributaryArea * factoredLoad;
+                const totalLoad = loadPerFloor * (numStoreys + 1); // +1 for roof
+
+                col.loadPerFloor = loadPerFloor;
+                col.totalLoad = totalLoad;
+
+                totalArea += col.tributaryArea;
+                totalLoadSum += loadPerFloor;
+
+                // List item
+                listHtml.push(`
+                    <div class="column-item" data-col="${col.id}">
+                        <div>
+                            <span class="id">${col.id}</span>
+                            <span style="color: #888; font-size: 0.7rem;"> (${col.x}, ${col.y})</span>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="area">${col.tributaryArea.toFixed(2)} m²</div>
+                            <div class="load">${totalLoad.toFixed(0)} kN total</div>
+                        </div>
+                    </div>
+                `);
+
+                // Table row
+                tableHtml.push(`
+                    <tr>
+                        <td>${col.id}</td>
+                        <td>${col.tributaryArea.toFixed(2)} m²</td>
+                        <td>${loadPerFloor.toFixed(0)} kN</td>
+                        <td>${totalLoad.toFixed(0)} kN</td>
+                    </tr>
+                `);
+            }
+
+            // Update UI
+            document.getElementById('totalArea').textContent = totalArea.toFixed(1);
+            document.getElementById('totalLoad').textContent = totalLoadSum.toFixed(0);
+            document.getElementById('columnList').innerHTML = listHtml.join('');
+            document.getElementById('tableBody').innerHTML = tableHtml.join('');
+
+            draw();
+        }
+
+        function fitView() {
+            const maxX = Math.max(...gridData.xLines);
+            const maxY = Math.max(...gridData.yLines);
+
+            const scaleX = (canvas.width - 100) / maxX;
+            const scaleY = (canvas.height - 100) / maxY;
+            scale = Math.min(scaleX, scaleY, 80);
+
+            offsetX = (canvas.width - maxX * scale) / 2;
+            offsetY = (canvas.height - maxY * scale) / 2;
+        }
+
+        function draw() {
+            if (!ctx) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const xLines = gridData.xLines;
+            const yLines = gridData.yLines;
+
+            // Draw tributary areas
+            for (let col of gridData.columns) {
+                const x = offsetX + col.x * scale;
+                const y = offsetY + col.y * scale;
+
+                // Gradient based on area
+                const maxArea = Math.max(...gridData.columns.map(c => c.tributaryArea));
+                const intensity = col.tributaryArea / maxArea;
+
+                ctx.fillStyle = `rgba(124, 58, 237, ${0.1 + intensity * 0.2})`;
+                ctx.strokeStyle = 'rgba(124, 58, 237, 0.5)';
+                ctx.lineWidth = 1;
+
+                // Draw tributary rectangle
+                const left = x - col.tribLeft * scale;
+                const top = y - col.tribTop * scale;
+                const width = col.tribWidth * scale;
+                const height = col.tribHeight * scale;
+
+                ctx.fillRect(left, top, width, height);
+                ctx.strokeRect(left, top, width, height);
+
+                // Draw area text if big enough
+                if (width > 40 && height > 30) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                    ctx.font = '10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${col.tributaryArea.toFixed(1)}m²`, x, y + col.tribHeight * scale / 4);
+                }
+            }
+
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+
+            // Vertical lines
+            for (let x of xLines) {
+                const px = offsetX + x * scale;
+                ctx.beginPath();
+                ctx.moveTo(px, offsetY + yLines[0] * scale);
+                ctx.lineTo(px, offsetY + yLines[yLines.length - 1] * scale);
+                ctx.stroke();
+            }
+
+            // Horizontal lines
+            for (let y of yLines) {
+                const py = offsetY + y * scale;
+                ctx.beginPath();
+                ctx.moveTo(offsetX + xLines[0] * scale, py);
+                ctx.lineTo(offsetX + xLines[xLines.length - 1] * scale, py);
+                ctx.stroke();
+            }
+
+            ctx.setLineDash([]);
+
+            // Draw columns
+            for (let col of gridData.columns) {
+                const x = offsetX + col.x * scale;
+                const y = offsetY + col.y * scale;
+
+                // Column marker
+                const isHovered = hoveredColumn === col;
+                ctx.fillStyle = isHovered ? '#00ff88' : '#00d4ff';
+                ctx.beginPath();
+                ctx.arc(x, y, isHovered ? 10 : 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Column border
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Column ID
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(col.id, x, y - 15);
+            }
+
+            // Draw dimensions
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.font = '10px sans-serif';
+
+            // X dimensions
+            for (let i = 0; i < xLines.length; i++) {
+                const x = offsetX + xLines[i] * scale;
+                const y = offsetY + yLines[0] * scale - 25;
+                ctx.textAlign = 'center';
+                ctx.fillText(`${xLines[i]}m`, x, y);
+            }
+
+            // Y dimensions
+            for (let i = 0; i < yLines.length; i++) {
+                const x = offsetX + xLines[0] * scale - 25;
+                const y = offsetY + yLines[i] * scale + 4;
+                ctx.textAlign = 'right';
+                ctx.fillText(`${yLines[i]}m`, x, y);
+            }
+        }
+
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            hoveredColumn = null;
+            for (let col of gridData.columns) {
+                const x = offsetX + col.x * scale;
+                const y = offsetY + col.y * scale;
+                const dist = Math.sqrt((mouseX - x) ** 2 + (mouseY - y) ** 2);
+
+                if (dist < 15) {
+                    hoveredColumn = col;
+                    break;
+                }
+            }
+
+            // Update tooltip
+            const tooltip = document.getElementById('tooltip');
+            if (hoveredColumn) {
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 15) + 'px';
+                tooltip.style.top = (e.clientY + 15) + 'px';
+                tooltip.innerHTML = `
+                    <strong>${hoveredColumn.id}</strong><br>
+                    Position: (${hoveredColumn.x}, ${hoveredColumn.y})<br>
+                    Tributary: ${hoveredColumn.tributaryArea.toFixed(2)} m²<br>
+                    Load/Floor: ${(hoveredColumn.loadPerFloor || 0).toFixed(0)} kN
+                `;
+            } else {
+                tooltip.style.display = 'none';
+            }
+
+            draw();
+        }
+
+        function handleClick(e) {
+            // Could add column editing functionality here
+        }
+
+        function zoomIn() {
+            scale *= 1.2;
+            draw();
+        }
+
+        function zoomOut() {
+            scale /= 1.2;
+            draw();
+        }
+
+        function resetView() {
+            fitView();
+            draw();
+        }
+
+        function exportImage() {
+            const link = document.createElement('a');
+            link.download = 'tributary-areas.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+
+</html>

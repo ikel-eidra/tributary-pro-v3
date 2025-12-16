@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foundation Plan | Pang-Masa Engineering</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(20, 20, 30, 0.95);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #00c853, #00bfa5);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .logo h1 span {
+            background: linear-gradient(135deg, #00c853, #00bfa5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #00c853, #00bfa5);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 200, 83, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 70px);
+        }
+
+        .panel {
+            background: rgba(20, 20, 30, 0.8);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #00c853;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .canvas-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #planCanvas {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        .summary-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .summary-card h4 {
+            font-size: 0.7rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .summary-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #00c853;
+        }
+
+        .summary-unit {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .footing-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .footing-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .footing-item:hover {
+            background: rgba(0, 200, 83, 0.1);
+            border-left-color: #00c853;
+        }
+
+        .footing-item.selected {
+            background: rgba(0, 200, 83, 0.2);
+            border-left-color: #00c853;
+        }
+
+        .footing-id {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .footing-size {
+            font-size: 0.8rem;
+            color: #00c853;
+        }
+
+        .footing-load {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .param-item {
+            margin-bottom: 12px;
+        }
+
+        .param-item label {
+            display: block;
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .param-item input,
+        .param-item select {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+            padding: 8px 6px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .schedule-table th {
+            color: #8b949e;
+            font-weight: 500;
+            font-size: 0.7rem;
+        }
+
+        .legend {
+            display: flex;
+            gap: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">📋</div>
+            <h1>Foundation <span>Plan</span></h1>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="loadFromTributary()">📥 Load from Tributary Pro</button>
+            <button class="btn btn-secondary" onclick="designAllFootings()">🔄 Auto-Design All</button>
+            <button class="btn" onclick="exportSchedule()">📤 Export Schedule</button>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav
+        style="background: rgba(10,10,15,0.95); padding: 8px 20px; display: flex; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); flex-wrap: wrap;">
+        <a href="tributary_pro.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">📐
+            Tributary Pro</a>
+        <a href="frame_viewer_3d.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">🏗️
+            3D Viewer</a>
+        <a href="footing_design.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">🔳
+            Footing Design</a>
+        <a href="foundation_plan.html"
+            style="padding: 6px 14px; background: linear-gradient(135deg, #00c853, #00bfa5); border-radius: 6px; color: #fff; text-decoration: none; font-size: 0.8rem; font-weight: 600;">📋
+            Foundation Plan</a>
+        <a href="calculation_sheet.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">📄
+            Calc Sheet</a>
+        <a href="structural_analysis.html"
+            style="padding: 6px 14px; background: rgba(255,255,255,0.1); border-radius: 6px; color: #aaa; text-decoration: none; font-size: 0.8rem;">⚡
+            Analysis</a>
+        <span style="flex: 1;"></span>
+        <span style="color: #8b949e; font-size: 0.7rem; align-self: center;">🚀 Pang-Masa Engineering Suite v0.1</span>
+    </nav>
+
+    <div class="app-container">
+        <!-- Left Panel - Settings & List -->
+        <div class="panel">
+            <div class="panel-header">⚙️ Design Parameters</div>
+
+            <div class="param-item">
+                <label>Soil Bearing Capacity (kPa)</label>
+                <input type="number" id="soilCapacity" value="100" step="10" onchange="designAllFootings()">
+            </div>
+
+            <div class="param-item">
+                <label>Concrete f'c (MPa)</label>
+                <input type="number" id="fc" value="21" step="1">
+            </div>
+
+            <div class="param-item">
+                <label>Steel fy (MPa)</label>
+                <input type="number" id="fy" value="275" step="5">
+            </div>
+
+            <div class="param-item">
+                <label>Cover (mm)</label>
+                <input type="number" id="cover" value="75" step="5">
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">📍 Footings</div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #00c853;"></div>
+                    <span>OK</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff6b35;"></div>
+                    <span>Needs Check</span>
+                </div>
+            </div>
+
+            <div class="footing-list" id="footingList">
+                <div style="color: #8b949e; text-align: center; padding: 20px;">
+                    Click "Load from Tributary Pro" to import columns
+                </div>
+            </div>
+        </div>
+
+        <!-- Center - Canvas -->
+        <div class="canvas-area">
+            <canvas id="planCanvas"></canvas>
+        </div>
+
+        <!-- Right Panel - Summary -->
+        <div class="panel">
+            <div class="panel-header">📊 Foundation Summary</div>
+
+            <div class="summary-card">
+                <h4>Total Footings</h4>
+                <span class="summary-value" id="totalFootings">0</span>
+            </div>
+
+            <div class="summary-card">
+                <h4>Total Concrete</h4>
+                <span class="summary-value" id="totalConcrete">0</span>
+                <span class="summary-unit">m³</span>
+            </div>
+
+            <div class="summary-card">
+                <h4>Total Rebar</h4>
+                <span class="summary-value" id="totalRebar">0</span>
+                <span class="summary-unit">kg</span>
+            </div>
+
+            <div class="summary-card">
+                <h4>Total Excavation</h4>
+                <span class="summary-value" id="totalExcavation">0</span>
+                <span class="summary-unit">m³</span>
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">📋 Footing Schedule</div>
+
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Size (m)</th>
+                        <th>h (mm)</th>
+                        <th>Rebar</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let canvas, ctx;
+        let footings = [];
+        let gridData = { xSpans: [], ySpans: [] };
+        let selectedFooting = null;
+
+        // Pan/zoom state
+        let scale = 40;
+        let offsetX = 100;
+        let offsetY = 100;
+        let isDragging = false;
+        let lastMouse = { x: 0, y: 0 };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('planCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Mouse controls for pan
+            canvas.addEventListener('mousedown', e => {
+                isDragging = true;
+                lastMouse = { x: e.clientX, y: e.clientY };
+                canvas.style.cursor = 'grabbing';
+            });
+            canvas.addEventListener('mousemove', e => {
+                if (isDragging) {
+                    offsetX += e.clientX - lastMouse.x;
+                    offsetY += e.clientY - lastMouse.y;
+                    lastMouse = { x: e.clientX, y: e.clientY };
+                    draw();
+                }
+            });
+            canvas.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            });
+            canvas.addEventListener('mouseleave', () => isDragging = false);
+
+            // Zoom
+            canvas.addEventListener('wheel', e => {
+                e.preventDefault();
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                scale *= zoomFactor;
+                scale = Math.max(20, Math.min(100, scale));
+                draw();
+            });
+
+            // Try auto-load from Tributary Pro
+            setTimeout(loadFromTributary, 500);
+        });
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+
+        function loadFromTributary() {
+            const saved = localStorage.getItem('tributaryProColumns');
+            if (!saved) {
+                return;
+            }
+
+            try {
+                const data = JSON.parse(saved);
+
+                // Load grid from 3D model data
+                const gridSaved = localStorage.getItem('tributaryPro3DModel');
+                if (gridSaved) {
+                    const gridModel = JSON.parse(gridSaved);
+                    gridData.xSpans = gridModel.xSpans || [4, 4];
+                    gridData.ySpans = gridModel.ySpans || [3, 3];
+                }
+
+                // Update soil capacity
+                if (data.soilCapacity) {
+                    document.getElementById('soilCapacity').value = data.soilCapacity;
+                }
+
+                // Create footings from columns
+                footings = data.columns.filter(c => c.enabled).map(col => ({
+                    id: col.id,
+                    x: col.x,
+                    y: col.y,
+                    xi: col.xi,
+                    yi: col.yi,
+                    load: col.totalLoad,
+                    tribArea: col.tribArea,
+                    // Design results (will be calculated)
+                    L: 0,
+                    B: 0,
+                    h: 0,
+                    rebarX: '',
+                    rebarY: '',
+                    concrete: 0,
+                    rebar: 0,
+                    ok: false
+                }));
+
+                designAllFootings();
+                updateList();
+                draw();
+
+            } catch (e) {
+                console.error('Error loading:', e);
+            }
+        }
+
+        function designAllFootings() {
+            const qa = parseFloat(document.getElementById('soilCapacity').value) || 100;
+            const fc = parseFloat(document.getElementById('fc').value) || 21;
+            const fy = parseFloat(document.getElementById('fy').value) || 275;
+            const cover = parseFloat(document.getElementById('cover').value) || 75;
+
+            let totalConcrete = 0;
+            let totalRebar = 0;
+            let totalExcavation = 0;
+
+            for (let f of footings) {
+                // Auto-size footing
+                const Areq = f.load / qa * 1.1;
+                const side = Math.ceil(Math.sqrt(Areq) * 10) / 10;
+                const roundedSide = Math.ceil(side * 5) / 5; // Round to 0.2m increments
+
+                f.L = roundedSide;
+                f.B = roundedSide;
+
+                // Thickness estimate
+                f.h = Math.max(300, Math.ceil(roundedSide * 180 / 50) * 50);
+
+                // Effective depth
+                const d = (f.h - cover - 8) / 1000;
+
+                // Soil pressure check
+                const qu = f.load / (f.L * f.B);
+                f.ok = qu <= qa;
+
+                // Rebar (simplified)
+                const rebarDia = 16;
+                const nBars = Math.ceil(f.L * 1000 / 200);
+                f.rebarX = `${nBars}-${rebarDia}mm`;
+                f.rebarY = `${nBars}-${rebarDia}mm`;
+
+                // Quantities
+                f.concrete = f.L * f.B * (f.h / 1000);
+                const rebarLength = nBars * (f.B - 0.1) * 2;
+                f.rebar = rebarLength * (rebarDia * rebarDia / 162);
+
+                totalConcrete += f.concrete;
+                totalRebar += f.rebar;
+                totalExcavation += (f.L + 0.3) * (f.B + 0.3) * 1.5;
+            }
+
+            // Update summary
+            document.getElementById('totalFootings').textContent = footings.length;
+            document.getElementById('totalConcrete').textContent = totalConcrete.toFixed(1);
+            document.getElementById('totalRebar').textContent = totalRebar.toFixed(0);
+            document.getElementById('totalExcavation').textContent = totalExcavation.toFixed(1);
+
+            updateSchedule();
+            updateList();
+            draw();
+        }
+
+        function updateList() {
+            const list = document.getElementById('footingList');
+            if (footings.length === 0) {
+                list.innerHTML = '<div style="color: #8b949e; text-align: center; padding: 20px;">Click "Load from Tributary Pro" to import columns</div>';
+                return;
+            }
+
+            list.innerHTML = footings.map(f => `
+                <div class="footing-item ${selectedFooting === f.id ? 'selected' : ''}" 
+                     onclick="selectFooting('${f.id}')"
+                     style="border-left-color: ${f.ok ? '#00c853' : '#ff6b35'};">
+                    <div>
+                        <div class="footing-id">${f.id}</div>
+                        <div class="footing-load">${f.load.toFixed(0)} kN</div>
+                    </div>
+                    <div class="footing-size">${f.L.toFixed(1)} × ${f.B.toFixed(1)} m</div>
+                </div>
+            `).join('');
+        }
+
+        function updateSchedule() {
+            const tbody = document.getElementById('scheduleBody');
+            tbody.innerHTML = footings.map(f => `
+                <tr>
+                    <td>${f.id}</td>
+                    <td>${f.L.toFixed(1)}×${f.B.toFixed(1)}</td>
+                    <td>${f.h}</td>
+                    <td style="font-size: 0.65rem;">${f.rebarX}</td>
+                </tr>
+            `).join('');
+        }
+
+        function selectFooting(id) {
+            selectedFooting = id;
+            updateList();
+            draw();
+        }
+
+        function draw() {
+            if (!ctx) return;
+
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            drawGrid();
+
+            // Draw footings
+            for (let f of footings) {
+                drawFooting(f);
+            }
+
+            // Draw title
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText('FOUNDATION PLAN', 20, 30);
+            ctx.font = '11px sans-serif';
+            ctx.fillStyle = '#8b949e';
+            ctx.fillText(`Scale: 1:${Math.round(1000 / scale)}`, 20, 48);
+        }
+
+        function drawGrid() {
+            if (!gridData.xSpans.length) return;
+
+            const letters = 'ABCDEFGHIJ';
+
+            // Calculate grid positions
+            let xLines = [0];
+            for (let span of gridData.xSpans) {
+                xLines.push(xLines[xLines.length - 1] + span);
+            }
+
+            let yLines = [0];
+            for (let span of gridData.ySpans) {
+                yLines.push(yLines[yLines.length - 1] + span);
+            }
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+
+            // Vertical grid lines
+            for (let i = 0; i < xLines.length; i++) {
+                const x = offsetX + xLines[i] * scale;
+                ctx.beginPath();
+                ctx.moveTo(x, offsetY - 40);
+                ctx.lineTo(x, offsetY + yLines[yLines.length - 1] * scale + 40);
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = '#8b949e';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(letters[i], x, offsetY - 50);
+            }
+
+            // Horizontal grid lines
+            for (let i = 0; i < yLines.length; i++) {
+                const y = offsetY + yLines[i] * scale;
+                ctx.beginPath();
+                ctx.moveTo(offsetX - 40, y);
+                ctx.lineTo(offsetX + xLines[xLines.length - 1] * scale + 40, y);
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = '#8b949e';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(String(i + 1), offsetX - 50, y + 4);
+            }
+
+            ctx.setLineDash([]);
+        }
+
+        function drawFooting(f) {
+            const x = offsetX + f.x * scale;
+            const y = offsetY + f.y * scale;
+            const w = f.L * scale;
+            const h = f.B * scale;
+
+            // Footing rectangle
+            const isSelected = selectedFooting === f.id;
+
+            ctx.fillStyle = f.ok
+                ? (isSelected ? 'rgba(0,200,83,0.4)' : 'rgba(0,200,83,0.2)')
+                : (isSelected ? 'rgba(255,107,53,0.4)' : 'rgba(255,107,53,0.2)');
+            ctx.fillRect(x - w / 2, y - h / 2, w, h);
+
+            ctx.strokeStyle = f.ok ? '#00c853' : '#ff6b35';
+            ctx.lineWidth = isSelected ? 3 : 1.5;
+            ctx.strokeRect(x - w / 2, y - h / 2, w, h);
+
+            // Column dot
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Label
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(f.id, x, y - 8);
+
+            // Size label
+            if (isSelected || scale > 35) {
+                ctx.font = '9px sans-serif';
+                ctx.fillStyle = '#00c853';
+                ctx.fillText(`${f.L.toFixed(1)}×${f.B.toFixed(1)}m`, x, y + h / 2 + 14);
+            }
+        }
+
+        function exportSchedule() {
+            let csv = 'FOUNDATION SCHEDULE\n\n';
+            csv += 'Column ID,Size L (m),Size B (m),Depth h (mm),Load Pu (kN),Rebar X,Rebar Y,Concrete (m³)\n';
+
+            for (let f of footings) {
+                csv += `${f.id},${f.L.toFixed(2)},${f.B.toFixed(2)},${f.h},${f.load.toFixed(0)},${f.rebarX},${f.rebarY},${f.concrete.toFixed(3)}\n`;
+            }
+
+            csv += `\nTOTAL QUANTITIES\n`;
+            csv += `Concrete,${document.getElementById('totalConcrete').textContent} m³\n`;
+            csv += `Rebar,${document.getElementById('totalRebar').textContent} kg\n`;
+            csv += `Excavation,${document.getElementById('totalExcavation').textContent} m³\n`;
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'foundation_schedule.csv';
+            a.click();
+        }
+
+        // Listen for live updates
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'tributaryProColumns') {
+                loadFromTributary();
+            }
+        });
+    </script>
+</body>
+
+</html>

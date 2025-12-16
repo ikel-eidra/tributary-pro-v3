@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structural Analysis Engine | Pang-Masa Engineering</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(20, 20, 30, 0.95);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .logo h1 span {
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(233, 30, 99, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        nav {
+            background: rgba(10, 10, 15, 0.95);
+            padding: 8px 20px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            padding: 6px 14px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+
+        nav a.active {
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            gap: 20px;
+            padding: 20px;
+            height: calc(100vh - 110px);
+        }
+
+        .panel {
+            background: rgba(20, 20, 30, 0.8);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #e91e63;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .param-item {
+            margin-bottom: 12px;
+        }
+
+        .param-item label {
+            display: block;
+            font-size: 0.75rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .param-item input,
+        .param-item select {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .canvas-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #analysisCanvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .result-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .result-card h4 {
+            font-size: 0.7rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .result-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #e91e63;
+        }
+
+        .result-unit {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .member-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+        }
+
+        .member-table th,
+        .member-table td {
+            padding: 6px 4px;
+            text-align: right;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .member-table th {
+            color: #8b949e;
+            font-weight: 500;
+            font-size: 0.65rem;
+            text-align: center;
+        }
+
+        .member-table td:first-child {
+            text-align: left;
+            color: #fff;
+        }
+
+        .status-ok {
+            color: #00c853;
+        }
+
+        .status-fail {
+            color: #ff5252;
+        }
+
+        .analysis-status {
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .analysis-status.running {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .analysis-status.complete {
+            background: rgba(0, 200, 83, 0.2);
+            color: #00c853;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+
+        .view-toggle button {
+            flex: 1;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .view-toggle button.active {
+            background: linear-gradient(135deg, #e91e63, #9c27b0);
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">⚡</div>
+            <h1>Structural <span>Analysis</span></h1>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-secondary" onclick="loadFromTributary()">📥 Load from Tributary Pro</button>
+            <button class="btn" onclick="runAnalysis()">⚡ Run Analysis</button>
+        </div>
+    </div>
+
+    <nav>
+        <a href="tributary_pro.html">📐 Tributary Pro</a>
+        <a href="frame_viewer_3d.html">🏗️ 3D Viewer</a>
+        <a href="footing_design.html">🔳 Footing Design</a>
+        <a href="foundation_plan.html">📋 Foundation Plan</a>
+        <a href="calculation_sheet.html">📄 Calc Sheet</a>
+        <a href="structural_analysis.html" class="active">⚡ Analysis</a>
+        <span style="flex: 1;"></span>
+        <span style="color: #8b949e; font-size: 0.7rem; align-self: center;">🚀 Pang-Masa Engineering Suite v0.1</span>
+    </nav>
+
+    <div class="app-container">
+        <!-- Left Panel - Model Setup -->
+        <div class="panel">
+            <div class="panel-header">🏗️ Frame Configuration</div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>X Bays</label>
+                    <input type="number" id="xBays" value="2" min="1" max="5">
+                </div>
+                <div class="param-item">
+                    <label>Y Bays</label>
+                    <input type="number" id="yBays" value="2" min="1" max="5">
+                </div>
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>X Span (m)</label>
+                    <input type="number" id="xSpan" value="4" step="0.5">
+                </div>
+                <div class="param-item">
+                    <label>Y Span (m)</label>
+                    <input type="number" id="ySpan" value="4" step="0.5">
+                </div>
+            </div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Storeys</label>
+                    <input type="number" id="storeys" value="3" min="1" max="10">
+                </div>
+                <div class="param-item">
+                    <label>Floor Height (m)</label>
+                    <input type="number" id="floorHeight" value="3" step="0.1">
+                </div>
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">📏 Section Properties</div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Column (mm)</label>
+                    <input type="number" id="colSize" value="400" step="50">
+                </div>
+                <div class="param-item">
+                    <label>Beam Width (mm)</label>
+                    <input type="number" id="beamW" value="300" step="50">
+                </div>
+            </div>
+
+            <div class="param-item">
+                <label>Beam Depth (mm)</label>
+                <input type="number" id="beamD" value="500" step="50">
+            </div>
+
+            <div class="param-item">
+                <label>Concrete E (MPa)</label>
+                <input type="number" id="E" value="21538" step="100">
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">📊 Loading</div>
+
+            <div class="param-grid">
+                <div class="param-item">
+                    <label>Dead Load (kN/m²)</label>
+                    <input type="number" id="deadLoad" value="5" step="0.5">
+                </div>
+                <div class="param-item">
+                    <label>Live Load (kN/m²)</label>
+                    <input type="number" id="liveLoad" value="2" step="0.5">
+                </div>
+            </div>
+
+            <div class="param-item">
+                <label>Load Combination</label>
+                <select id="loadCombo">
+                    <option value="1.2,1.6">1.2D + 1.6L (NSCP 203.3)</option>
+                    <option value="1.4,0">1.4D (Dead only)</option>
+                    <option value="1.0,1.0">1.0D + 1.0L (Service)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Center - Canvas -->
+        <div class="canvas-area">
+            <canvas id="analysisCanvas"></canvas>
+        </div>
+
+        <!-- Right Panel - Results -->
+        <div class="panel">
+            <div class="panel-header">📊 Analysis Results</div>
+
+            <div class="analysis-status" id="analysisStatus">
+                Click "Run Analysis" to solve
+            </div>
+
+            <div class="view-toggle">
+                <button class="active" onclick="setView('frame')">Frame</button>
+                <button onclick="setView('moment')">Moment</button>
+                <button onclick="setView('shear')">Shear</button>
+                <button onclick="setView('deflection')">Deflection</button>
+            </div>
+
+            <div class="result-card">
+                <h4>Max Column Moment</h4>
+                <span class="result-value" id="maxColMoment">-</span>
+                <span class="result-unit">kN·m</span>
+            </div>
+
+            <div class="result-card">
+                <h4>Max Beam Moment</h4>
+                <span class="result-value" id="maxBeamMoment">-</span>
+                <span class="result-unit">kN·m</span>
+            </div>
+
+            <div class="result-card">
+                <h4>Max Beam Shear</h4>
+                <span class="result-value" id="maxBeamShear">-</span>
+                <span class="result-unit">kN</span>
+            </div>
+
+            <div class="result-card">
+                <h4>Max Deflection</h4>
+                <span class="result-value" id="maxDeflection">-</span>
+                <span class="result-unit">mm</span>
+            </div>
+
+            <div class="panel-header" style="margin-top: 20px;">📋 Member Forces</div>
+
+            <div style="max-height: 200px; overflow-y: auto;">
+                <table class="member-table" id="memberTable">
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>M1 (kN·m)</th>
+                            <th>M2 (kN·m)</th>
+                            <th>V (kN)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // DIRECT STIFFNESS METHOD - STRUCTURAL ANALYSIS ENGINE
+        // ========================================
+
+        let canvas, ctx;
+        let model = { nodes: [], members: [], loads: [] };
+        let results = { displacements: [], memberForces: [] };
+        let currentView = 'frame';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            canvas = document.getElementById('analysisCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            buildModel();
+            draw();
+        });
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+
+        function buildModel() {
+            const xBays = parseInt(document.getElementById('xBays').value);
+            const storeys = parseInt(document.getElementById('storeys').value);
+            const xSpan = parseFloat(document.getElementById('xSpan').value);
+            const floorHeight = parseFloat(document.getElementById('floorHeight').value);
+            const colSize = parseFloat(document.getElementById('colSize').value) / 1000;
+            const beamW = parseFloat(document.getElementById('beamW').value) / 1000;
+            const beamD = parseFloat(document.getElementById('beamD').value) / 1000;
+            const E = parseFloat(document.getElementById('E').value) * 1000; // kN/m²
+
+            model.nodes = [];
+            model.members = [];
+
+            // Column properties
+            const Icol = colSize * colSize * colSize * colSize / 12;
+            const Acol = colSize * colSize;
+
+            // Beam properties
+            const Ibeam = beamW * beamD * beamD * beamD / 12;
+            const Abeam = beamW * beamD;
+
+            // Create nodes (2D frame in X-Z plane)
+            let nodeId = 0;
+            for (let j = 0; j <= storeys; j++) {
+                for (let i = 0; i <= xBays; i++) {
+                    model.nodes.push({
+                        id: nodeId++,
+                        x: i * xSpan,
+                        z: j * floorHeight,
+                        fixed: j === 0, // Ground floor is fixed
+                        dx: 0, dz: 0, rz: 0 // Displacements
+                    });
+                }
+            }
+
+            // Create columns
+            const nodesPerFloor = xBays + 1;
+            for (let j = 0; j < storeys; j++) {
+                for (let i = 0; i <= xBays; i++) {
+                    const n1 = j * nodesPerFloor + i;
+                    const n2 = (j + 1) * nodesPerFloor + i;
+                    model.members.push({
+                        id: model.members.length,
+                        type: 'column',
+                        n1: n1,
+                        n2: n2,
+                        E: E,
+                        I: Icol,
+                        A: Acol,
+                        L: floorHeight,
+                        M1: 0, M2: 0, V: 0, N: 0 // Results
+                    });
+                }
+            }
+
+            // Create beams
+            for (let j = 1; j <= storeys; j++) {
+                for (let i = 0; i < xBays; i++) {
+                    const n1 = j * nodesPerFloor + i;
+                    const n2 = j * nodesPerFloor + i + 1;
+                    model.members.push({
+                        id: model.members.length,
+                        type: 'beam',
+                        n1: n1,
+                        n2: n2,
+                        E: E,
+                        I: Ibeam,
+                        A: Abeam,
+                        L: xSpan,
+                        M1: 0, M2: 0, V: 0, N: 0
+                    });
+                }
+            }
+        }
+
+        function runAnalysis() {
+            document.getElementById('analysisStatus').className = 'analysis-status running';
+            document.getElementById('analysisStatus').textContent = '⏳ Analyzing...';
+
+            setTimeout(() => {
+                buildModel();
+
+                const DL = parseFloat(document.getElementById('deadLoad').value);
+                const LL = parseFloat(document.getElementById('liveLoad').value);
+                const combo = document.getElementById('loadCombo').value.split(',');
+                const factorD = parseFloat(combo[0]);
+                const factorL = parseFloat(combo[1]);
+                const wu = factorD * DL + factorL * LL; // kN/m²
+
+                const xSpan = parseFloat(document.getElementById('xSpan').value);
+                const ySpan = parseFloat(document.getElementById('ySpan').value);
+                const tribWidth = ySpan; // Tributary width for interior frame
+                const w = wu * tribWidth; // kN/m on beam
+
+                // ========================================
+                // DIRECT STIFFNESS METHOD IMPLEMENTATION
+                // ========================================
+
+                const nNodes = model.nodes.length;
+                const nDOF = nNodes * 3; // 3 DOF per node: dx, dz, rz
+
+                // Initialize global stiffness matrix and load vector
+                let K = Array(nDOF).fill(null).map(() => Array(nDOF).fill(0));
+                let F = Array(nDOF).fill(0);
+
+                // Assemble stiffness matrix
+                for (let m of model.members) {
+                    const n1 = m.n1;
+                    const n2 = m.n2;
+                    const E = m.E;
+                    const I = m.I;
+                    const A = m.A;
+                    const L = m.L;
+
+                    // Local stiffness matrix for 2D frame element
+                    const EI = E * I;
+                    const EA = E * A;
+
+                    // Rotation angle
+                    const node1 = model.nodes[n1];
+                    const node2 = model.nodes[n2];
+                    const dx = node2.x - node1.x;
+                    const dz = node2.z - node1.z;
+                    const c = dx / L; // cos
+                    const s = dz / L; // sin
+
+                    // Local stiffness matrix (6x6)
+                    const k = [
+                        [EA / L, 0, 0, -EA / L, 0, 0],
+                        [0, 12 * EI / L ** 3, 6 * EI / L ** 2, 0, -12 * EI / L ** 3, 6 * EI / L ** 2],
+                        [0, 6 * EI / L ** 2, 4 * EI / L, 0, -6 * EI / L ** 2, 2 * EI / L],
+                        [-EA / L, 0, 0, EA / L, 0, 0],
+                        [0, -12 * EI / L ** 3, -6 * EI / L ** 2, 0, 12 * EI / L ** 3, -6 * EI / L ** 2],
+                        [0, 6 * EI / L ** 2, 2 * EI / L, 0, -6 * EI / L ** 2, 4 * EI / L]
+                    ];
+
+                    // Transformation matrix
+                    const T = [
+                        [c, s, 0, 0, 0, 0],
+                        [-s, c, 0, 0, 0, 0],
+                        [0, 0, 1, 0, 0, 0],
+                        [0, 0, 0, c, s, 0],
+                        [0, 0, 0, -s, c, 0],
+                        [0, 0, 0, 0, 0, 1]
+                    ];
+
+                    // Global stiffness: K_global = T^T * k * T
+                    const Tt = transpose(T);
+                    const kT = multiply(k, T);
+                    const Kg = multiply(Tt, kT);
+
+                    // DOF mapping
+                    const dofs = [n1 * 3, n1 * 3 + 1, n1 * 3 + 2, n2 * 3, n2 * 3 + 1, n2 * 3 + 2];
+
+                    // Add to global matrix
+                    for (let i = 0; i < 6; i++) {
+                        for (let j = 0; j < 6; j++) {
+                            K[dofs[i]][dofs[j]] += Kg[i][j];
+                        }
+                    }
+
+                    // Fixed-end forces for beams with UDL
+                    if (m.type === 'beam') {
+                        const M_fem = w * L * L / 12;
+                        const V_fem = w * L / 2;
+
+                        // Apply to global load vector (negative because fixed-end)
+                        F[n1 * 3 + 1] -= V_fem; // Vertical
+                        F[n1 * 3 + 2] -= M_fem; // Moment
+                        F[n2 * 3 + 1] -= V_fem;
+                        F[n2 * 3 + 2] += M_fem;
+                    }
+                }
+
+                // Apply boundary conditions (fixed supports at ground)
+                let fixedDOFs = [];
+                for (let n of model.nodes) {
+                    if (n.fixed) {
+                        fixedDOFs.push(n.id * 3);
+                        fixedDOFs.push(n.id * 3 + 1);
+                        fixedDOFs.push(n.id * 3 + 2);
+                    }
+                }
+
+                // Solve [K]{D} = {F} using reduction method
+                let freeDOFs = [];
+                for (let i = 0; i < nDOF; i++) {
+                    if (!fixedDOFs.includes(i)) freeDOFs.push(i);
+                }
+
+                // Extract reduced matrices
+                const nFree = freeDOFs.length;
+                let Kff = Array(nFree).fill(null).map(() => Array(nFree).fill(0));
+                let Ff = Array(nFree).fill(0);
+
+                for (let i = 0; i < nFree; i++) {
+                    Ff[i] = F[freeDOFs[i]];
+                    for (let j = 0; j < nFree; j++) {
+                        Kff[i][j] = K[freeDOFs[i]][freeDOFs[j]];
+                    }
+                }
+
+                // Solve using Gaussian elimination
+                const Df = solveLinear(Kff, Ff);
+
+                // Store displacements
+                let D = Array(nDOF).fill(0);
+                for (let i = 0; i < nFree; i++) {
+                    D[freeDOFs[i]] = Df[i];
+                }
+
+                // Update node displacements
+                for (let n of model.nodes) {
+                    n.dx = D[n.id * 3] * 1000; // Convert to mm
+                    n.dz = D[n.id * 3 + 1] * 1000;
+                    n.rz = D[n.id * 3 + 2];
+                }
+
+                // Calculate member forces
+                for (let m of model.members) {
+                    const n1 = model.nodes[m.n1];
+                    const n2 = model.nodes[m.n2];
+                    const E = m.E;
+                    const I = m.I;
+                    const L = m.L;
+
+                    // Get displacements at nodes
+                    const d1 = [D[m.n1 * 3], D[m.n1 * 3 + 1], D[m.n1 * 3 + 2]];
+                    const d2 = [D[m.n2 * 3], D[m.n2 * 3 + 1], D[m.n2 * 3 + 2]];
+
+                    // Simplified moment calculation
+                    if (m.type === 'column') {
+                        // Column moments from lateral displacement
+                        const drift = (n2.dx - n1.dx) / 1000; // back to m
+                        m.M1 = 6 * E * I * drift / (L * L);
+                        m.M2 = m.M1;
+                        m.V = 2 * m.M1 / L;
+                    } else {
+                        // Beam with UDL
+                        const wL2 = w * L * L;
+                        m.M1 = wL2 / 12 + 2 * E * I / L * (2 * d1[2] + d2[2]);
+                        m.M2 = wL2 / 12 + 2 * E * I / L * (d1[2] + 2 * d2[2]);
+                        m.V = w * L / 2;
+                    }
+                }
+
+                // Update results display
+                const beams = model.members.filter(m => m.type === 'beam');
+                const columns = model.members.filter(m => m.type === 'column');
+
+                const maxColM = Math.max(...columns.map(m => Math.max(Math.abs(m.M1), Math.abs(m.M2))));
+                const maxBeamM = Math.max(...beams.map(m => Math.max(Math.abs(m.M1), Math.abs(m.M2))));
+                const maxBeamV = Math.max(...beams.map(m => Math.abs(m.V)));
+                const maxDefl = Math.max(...model.nodes.map(n => Math.sqrt(n.dx * n.dx + n.dz * n.dz)));
+
+                document.getElementById('maxColMoment').textContent = maxColM.toFixed(1);
+                document.getElementById('maxBeamMoment').textContent = maxBeamM.toFixed(1);
+                document.getElementById('maxBeamShear').textContent = maxBeamV.toFixed(1);
+                document.getElementById('maxDeflection').textContent = maxDefl.toFixed(2);
+
+                // Update member table
+                const tbody = document.querySelector('#memberTable tbody');
+                tbody.innerHTML = model.members.slice(0, 15).map(m => `
+                    <tr>
+                        <td>${m.type === 'beam' ? 'B' : 'C'}${m.id}</td>
+                        <td>${m.M1.toFixed(1)}</td>
+                        <td>${m.M2.toFixed(1)}</td>
+                        <td>${m.V.toFixed(1)}</td>
+                    </tr>
+                `).join('');
+
+                document.getElementById('analysisStatus').className = 'analysis-status complete';
+                document.getElementById('analysisStatus').textContent = '✅ Analysis Complete!';
+
+                draw();
+            }, 500);
+        }
+
+        // Matrix utilities
+        function transpose(m) {
+            return m[0].map((_, i) => m.map(row => row[i]));
+        }
+
+        function multiply(a, b) {
+            const result = Array(a.length).fill(null).map(() => Array(b[0].length).fill(0));
+            for (let i = 0; i < a.length; i++) {
+                for (let j = 0; j < b[0].length; j++) {
+                    for (let k = 0; k < b.length; k++) {
+                        result[i][j] += a[i][k] * b[k][j];
+                    }
+                }
+            }
+            return result;
+        }
+
+        function solveLinear(A, b) {
+            // Gaussian elimination with partial pivoting
+            const n = A.length;
+            const Aug = A.map((row, i) => [...row, b[i]]);
+
+            for (let i = 0; i < n; i++) {
+                // Pivot
+                let maxRow = i;
+                for (let k = i + 1; k < n; k++) {
+                    if (Math.abs(Aug[k][i]) > Math.abs(Aug[maxRow][i])) maxRow = k;
+                }
+                [Aug[i], Aug[maxRow]] = [Aug[maxRow], Aug[i]];
+
+                // Eliminate
+                for (let k = i + 1; k < n; k++) {
+                    const factor = Aug[k][i] / Aug[i][i];
+                    for (let j = i; j <= n; j++) {
+                        Aug[k][j] -= factor * Aug[i][j];
+                    }
+                }
+            }
+
+            // Back substitution
+            const x = Array(n).fill(0);
+            for (let i = n - 1; i >= 0; i--) {
+                x[i] = Aug[i][n];
+                for (let j = i + 1; j < n; j++) {
+                    x[i] -= Aug[i][j] * x[j];
+                }
+                x[i] /= Aug[i][i];
+            }
+
+            return x;
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-toggle button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            draw();
+        }
+
+        function draw() {
+            if (!ctx) return;
+
+            ctx.fillStyle = '#0a0a0f';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (model.nodes.length === 0) return;
+
+            // Calculate scale
+            const padding = 80;
+            const maxX = Math.max(...model.nodes.map(n => n.x));
+            const maxZ = Math.max(...model.nodes.map(n => n.z));
+            const scaleX = (canvas.width - 2 * padding) / maxX;
+            const scaleZ = (canvas.height - 2 * padding) / maxZ;
+            const scale = Math.min(scaleX, scaleZ);
+
+            const offsetX = padding;
+            const offsetY = canvas.height - padding;
+
+            const toScreen = (x, z) => ({
+                x: offsetX + x * scale,
+                y: offsetY - z * scale
+            });
+
+            // Draw members
+            for (let m of model.members) {
+                const n1 = model.nodes[m.n1];
+                const n2 = model.nodes[m.n2];
+                const p1 = toScreen(n1.x, n1.z);
+                const p2 = toScreen(n2.x, n2.z);
+
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+
+                if (m.type === 'column') {
+                    ctx.strokeStyle = '#4a90d9';
+                    ctx.lineWidth = 4;
+                } else {
+                    ctx.strokeStyle = '#ff9500';
+                    ctx.lineWidth = 3;
+                }
+                ctx.stroke();
+
+                // Draw moment diagram
+                if (currentView === 'moment' && (m.M1 || m.M2)) {
+                    const mScale = 0.3;
+                    const mx = (p1.x + p2.x) / 2;
+                    const my = (p1.y + p2.y) / 2;
+
+                    ctx.fillStyle = 'rgba(233, 30, 99, 0.3)';
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    if (m.type === 'beam') {
+                        ctx.lineTo(p1.x, p1.y - m.M1 * mScale);
+                        ctx.lineTo(mx, my - Math.max(m.M1, m.M2) * mScale * 1.2);
+                        ctx.lineTo(p2.x, p2.y - m.M2 * mScale);
+                    } else {
+                        ctx.lineTo(p1.x + m.M1 * mScale, p1.y);
+                        ctx.lineTo(p2.x + m.M2 * mScale, p2.y);
+                    }
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            // Draw nodes
+            for (let n of model.nodes) {
+                const p = toScreen(n.x, n.z);
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = n.fixed ? '#ff5252' : '#00c853';
+                ctx.fill();
+
+                // Draw deflected position
+                if (currentView === 'deflection' && (n.dx || n.dz)) {
+                    const defScale = 20;
+                    const pd = toScreen(n.x + n.dx / 1000 * defScale, n.z + n.dz / 1000 * defScale);
+
+                    ctx.beginPath();
+                    ctx.arc(pd.x, pd.y, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = '#e91e63';
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    ctx.lineTo(pd.x, pd.y);
+                    ctx.strokeStyle = '#e91e63';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3, 3]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // Draw supports
+            for (let n of model.nodes.filter(n => n.fixed)) {
+                const p = toScreen(n.x, n.z);
+                ctx.beginPath();
+                ctx.moveTo(p.x - 15, p.y);
+                ctx.lineTo(p.x + 15, p.y);
+                ctx.lineTo(p.x + 15, p.y + 10);
+                ctx.lineTo(p.x - 15, p.y + 10);
+                ctx.closePath();
+                ctx.fillStyle = '#666';
+                ctx.fill();
+            }
+
+            // Title
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText('2D FRAME ANALYSIS - DIRECT STIFFNESS METHOD', 20, 30);
+            ctx.font = '11px sans-serif';
+            ctx.fillStyle = '#8b949e';
+            ctx.fillText(`View: ${currentView.toUpperCase()}`, 20, 48);
+        }
+
+        function loadFromTributary() {
+            const saved = localStorage.getItem('tributaryPro3DModel');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    document.getElementById('xBays').value = data.xSpans ? data.xSpans.length : 2;
+                    document.getElementById('yBays').value = data.ySpans ? data.ySpans.length : 2;
+                    document.getElementById('xSpan').value = data.xSpans ? data.xSpans[0] : 4;
+                    document.getElementById('ySpan').value = data.ySpans ? data.ySpans[0] : 4;
+                    document.getElementById('storeys').value = data.storeys || 3;
+                    document.getElementById('floorHeight').value = data.floorHeight || 3;
+                    buildModel();
+                    draw();
+                    alert('Loaded configuration from Tributary Pro!');
+                } catch (e) {
+                    console.error(e);
+                }
+            } else {
+                alert('No data from Tributary Pro. Configure manually.');
+            }
+        }
+    </script>
+</body>
+
+</html>
