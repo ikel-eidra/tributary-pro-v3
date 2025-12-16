@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tributary Pro v2.2 | Structural Load Analysis</title>
+    <title>Tributary Pro v2.3 | Structural Load Analysis</title>
     <style>
         /* ========== RESET & VARIABLES ========== */
         * {
@@ -365,6 +365,124 @@
             color: var(--primary);
             margin: 0 8px;
         }
+
+        /* ========== FLOOR TABS ========== */
+        .floor-tabs-container {
+            margin-bottom: 16px;
+        }
+
+        .floor-tabs-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .floor-tabs-header h4 {
+            font-size: 0.75rem;
+            color: var(--primary);
+        }
+
+        .floor-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .floor-tab {
+            padding: 6px 12px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: #8b949e;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .floor-tab:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .floor-tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-color: transparent;
+            color: white;
+        }
+
+        .floor-tab.roof {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .floor-tab.roof.active {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            color: white;
+        }
+
+        .add-floor-btn {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px dashed var(--success);
+            border-radius: 6px;
+            color: var(--success);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-floor-btn:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .remove-floor-btn {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px dashed var(--danger);
+            border-radius: 6px;
+            color: var(--danger);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .remove-floor-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .floor-info {
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .floor-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .floor-info-header h5 {
+            font-size: 0.75rem;
+            color: var(--primary);
+        }
+
+        .floor-type-badge {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--secondary);
+            color: white;
+        }
+
+        .floor-type-badge.roof {
+            background: var(--warning);
+        }
     </style>
 </head>
 
@@ -373,7 +491,7 @@
     <header class="header">
         <div class="logo">
             <div class="logo-icon">📐</div>
-            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.2</span></h1>
+            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.3</span></h1>
         </div>
         <div class="header-actions">
             <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
@@ -410,27 +528,47 @@
                 <button class="add-span-btn" onclick="addSpan('y')">+ Add Y Span</button>
             </div>
 
-            <!-- Load Parameters -->
-            <div class="param-group">
-                <h3>⬇️ Load Parameters</h3>
-                <div class="param-grid">
-                    <div class="param-item">
-                        <!-- DL_super: superimposed dead load (kPa), EXCLUDING slab self-weight -->
-                        <label>DL Super (kPa) <span style="font-size:0.6rem;color:#f59e0b"
-                                title="Finishes, partitions, ceiling - NOT slab weight">ⓘ</span></label>
-                        <input type="number" id="dlSuper" value="2.0" step="0.5" min="0">
+            <!-- v2.3: Floor Tabs -->
+            <div class="floor-tabs-container">
+                <div class="floor-tabs-header">
+                    <h4>🏢 Floors</h4>
+                </div>
+                <div class="floor-tabs" id="floorTabs">
+                    <!-- Dynamically populated -->
+                </div>
+                <div style="display: flex; gap: 4px; margin-top: 8px;">
+                    <button class="add-floor-btn" onclick="addFloor()">+ Add Floor</button>
+                    <button class="remove-floor-btn" onclick="removeFloor()">− Remove</button>
+                </div>
+
+                <div class="floor-info" id="floorInfo">
+                    <div class="floor-info-header">
+                        <h5 id="currentFloorName">Ground Floor</h5>
+                        <span class="floor-type-badge" id="floorTypeBadge">Typical</span>
                     </div>
-                    <div class="param-item">
-                        <label>Live Load (kPa)</label>
-                        <input type="number" id="liveLoad" value="2.0" step="0.5" min="0">
-                    </div>
-                    <div class="param-item">
-                        <label>Slab Thickness (mm)</label>
-                        <input type="number" id="slabThickness" value="150" step="10" min="100">
-                    </div>
-                    <div class="param-item">
-                        <label>Floors</label>
-                        <input type="number" id="numFloors" value="3" step="1" min="1" max="50">
+                    <div class="param-grid">
+                        <div class="param-item">
+                            <label>DL Super (kPa) <span style="font-size:0.6rem;color:#f59e0b"
+                                    title="Finishes, partitions, ceiling - NOT slab weight">ⓘ</span></label>
+                            <input type="number" id="floorDL" value="2.0" step="0.5" min="0"
+                                onchange="updateCurrentFloor()">
+                        </div>
+                        <div class="param-item">
+                            <label>Live Load (kPa) <span style="font-size:0.6rem;color:#f59e0b"
+                                    title="Can be higher for roof parties/water tanks">ⓘ</span></label>
+                            <input type="number" id="floorLL" value="2.0" step="0.5" min="0"
+                                onchange="updateCurrentFloor()">
+                        </div>
+                        <div class="param-item">
+                            <label>Slab Thickness (mm)</label>
+                            <input type="number" id="floorSlabThickness" value="150" step="10" min="100"
+                                onchange="updateCurrentFloor()">
+                        </div>
+                        <div class="param-item">
+                            <label>Height (m)</label>
+                            <input type="number" id="floorHeight" value="3.0" step="0.1" min="2.5"
+                                onchange="updateCurrentFloor()">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -491,14 +629,15 @@
 
             <!-- Column Results Table -->
             <div class="param-group">
-                <h3>🏛️ Column Loads (Per Floor)</h3>
+                <h3>🏛️ Column Loads</h3>
                 <div style="max-height: 300px; overflow-y: auto;">
                     <table class="results-table">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>Type</th>
-                                <th>Load (kN)</th>
+                                <th>Floor (kN)</th>
+                                <th>Total (kN)</th>
                             </tr>
                         </thead>
                         <tbody id="columnResultsBody">
@@ -543,11 +682,14 @@
             xSpans: [4.0, 4.0],      // X-direction bay sizes (m)
             ySpans: [5.0, 5.0],      // Y-direction bay sizes (m)
 
-            // Load parameters
-            dlSuper: 2.0,            // Superimposed dead load (kPa) - NOT slab weight
-            liveLoad: 2.0,           // Live load (kPa)
-            slabThickness: 150,      // mm
-            numFloors: 3,
+            // v2.3: Floors array - per floor configurations
+            floors: [
+                { id: 'GF', name: 'Ground Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, isRoof: false },
+                { id: '2F', name: '2nd Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, isRoof: false },
+                { id: '3F', name: '3rd Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, isRoof: false },
+                { id: 'RF', name: 'Roof', dlSuper: 1.5, liveLoad: 1.0, slabThickness: 120, height: 3.0, isRoof: true }
+            ],
+            currentFloorIndex: 0,    // Which floor is selected
 
             // Generated data
             columns: [],             // Column objects
@@ -633,46 +775,214 @@
             }
         }
 
+        // ========== v2.3: FLOOR TABS UI ==========
+
+        function getFloorId(index, total) {
+            if (index === 0) return 'GF';
+            if (index === total - 1) return 'RF';
+            return `${index + 1}F`;
+        }
+
+        function getFloorName(id, isRoof) {
+            if (id === 'GF') return 'Ground Floor';
+            if (isRoof || id === 'RF') return 'Roof';
+            return `${id.replace('F', '')}${['st', 'nd', 'rd'][parseInt(id) - 2] || 'th'} Floor`;
+        }
+
+        function renderFloorTabs() {
+            const container = document.getElementById('floorTabs');
+            container.innerHTML = '';
+
+            state.floors.forEach((floor, i) => {
+                const btn = document.createElement('button');
+                btn.className = `floor-tab${i === state.currentFloorIndex ? ' active' : ''}${floor.isRoof ? ' roof' : ''}`;
+                btn.textContent = floor.id;
+                btn.onclick = () => selectFloor(i);
+                container.appendChild(btn);
+            });
+
+            updateFloorUI();
+        }
+
+        function selectFloor(index) {
+            state.currentFloorIndex = index;
+            renderFloorTabs();
+        }
+
+        function updateFloorUI() {
+            const floor = state.floors[state.currentFloorIndex];
+            if (!floor) return;
+
+            document.getElementById('currentFloorName').textContent = floor.name;
+            document.getElementById('floorTypeBadge').textContent = floor.isRoof ? 'Roof' : 'Typical';
+            document.getElementById('floorTypeBadge').className = `floor-type-badge${floor.isRoof ? ' roof' : ''}`;
+
+            document.getElementById('floorDL').value = floor.dlSuper;
+            document.getElementById('floorLL').value = floor.liveLoad;
+            document.getElementById('floorSlabThickness').value = floor.slabThickness;
+            document.getElementById('floorHeight').value = floor.height;
+        }
+
+        function updateCurrentFloor() {
+            const floor = state.floors[state.currentFloorIndex];
+            if (!floor) return;
+
+            floor.dlSuper = parseFloat(document.getElementById('floorDL').value) || 2.0;
+            floor.liveLoad = parseFloat(document.getElementById('floorLL').value) || 2.0;
+            floor.slabThickness = parseFloat(document.getElementById('floorSlabThickness').value) || 150;
+            floor.height = parseFloat(document.getElementById('floorHeight').value) || 3.0;
+
+            calculate();
+        }
+
+        function addFloor() {
+            const total = state.floors.length;
+            // Insert before roof (last)
+            const insertIndex = total > 0 && state.floors[total - 1].isRoof ? total - 1 : total;
+
+            // Rename existing floors
+            state.floors.forEach((f, i) => {
+                if (i < insertIndex && !f.isRoof && f.id !== 'GF') {
+                    // Keep as is
+                }
+            });
+
+            const newFloor = {
+                id: `${insertIndex + 1}F`,
+                name: `${insertIndex + 1}${['st', 'nd', 'rd'][insertIndex - 1] || 'th'} Floor`,
+                dlSuper: 2.0,
+                liveLoad: 2.0,
+                slabThickness: 150,
+                height: 3.0,
+                isRoof: false
+            };
+
+            state.floors.splice(insertIndex, 0, newFloor);
+
+            // Update IDs for all floors
+            state.floors.forEach((f, i) => {
+                if (i === 0) {
+                    f.id = 'GF';
+                    f.name = 'Ground Floor';
+                } else if (i === state.floors.length - 1 && f.isRoof) {
+                    f.id = 'RF';
+                    f.name = 'Roof';
+                } else {
+                    f.id = `${i + 1}F`;
+                    f.name = `${i + 1}${['st', 'nd', 'rd'][i - 1] || 'th'} Floor`;
+                }
+            });
+
+            renderFloorTabs();
+            calculate();
+        }
+
+        function removeFloor() {
+            if (state.floors.length <= 2) return; // Keep at least GF + RF
+
+            // Remove the currently selected floor (unless it's GF or RF)
+            const floor = state.floors[state.currentFloorIndex];
+            if (floor.id === 'GF' || floor.isRoof) {
+                // Can't remove GF or RF, remove the last typical floor instead
+                const lastTypical = state.floors.findLastIndex(f => !f.isRoof && f.id !== 'GF');
+                if (lastTypical > 0) {
+                    state.floors.splice(lastTypical, 1);
+                }
+            } else {
+                state.floors.splice(state.currentFloorIndex, 1);
+            }
+
+            // Clamp current floor index
+            if (state.currentFloorIndex >= state.floors.length) {
+                state.currentFloorIndex = state.floors.length - 1;
+            }
+
+            // Rename remaining floors
+            state.floors.forEach((f, i) => {
+                if (i === 0) {
+                    f.id = 'GF';
+                    f.name = 'Ground Floor';
+                } else if (f.isRoof) {
+                    f.id = 'RF';
+                    f.name = 'Roof';
+                } else {
+                    f.id = `${i + 1}F`;
+                    f.name = `${i + 1}${['st', 'nd', 'rd'][i - 1] || 'th'} Floor`;
+                }
+            });
+
+            renderFloorTabs();
+            calculate();
+        }
+
         // ========== CORE CALCULATIONS ==========
 
         /**
          * Main calculation function
          * Implements: SLAB → BEAMS → COLUMNS load path
+         * v2.3: Calculates per-floor and cumulative across all floors
          */
         function calculate() {
-            // Read input values
-            state.dlSuper = parseFloat(document.getElementById('dlSuper').value) || 2.0;
-            state.liveLoad = parseFloat(document.getElementById('liveLoad').value) || 2.0;
-            state.slabThickness = parseFloat(document.getElementById('slabThickness').value) || 150;
-            state.numFloors = parseInt(document.getElementById('numFloors').value) || 3;
-
-            // Clean spans to avoid zero/negative values that could break width calculations
+            // Clean spans to avoid zero/negative values
             state.xSpans = state.xSpans.map(span => sanitizeSpan(span));
             state.ySpans = state.ySpans.map(span => sanitizeSpan(span));
 
             // Step 1: Generate grid coordinates
             generateGrid();
 
-            // Step 2: Generate slab panels
+            // Step 2: Generate slab panels (same for all floors)
             generateSlabs();
 
-            // Step 3: Calculate factored load
-            // p_u = 1.2 * (DL_super + slab_weight) + 1.6 * LL
-            const slabWeight = 24 * (state.slabThickness / 1000); // kN/m² = kPa
-            const pu = 1.2 * (state.dlSuper + slabWeight) + 1.6 * state.liveLoad;
+            // Reset cumulative column loads
+            for (let col of state.columns) {
+                col.loadPerFloor = 0;
+                col.totalLoad = 0;
+                col.floorLoads = [];
+            }
 
-            // Step 4: Generate beams and calculate tributary widths
-            generateBeams(pu);
+            // v2.3: Calculate loads for each floor
+            let totalPuSum = 0;
+            for (let floor of state.floors) {
+                // Calculate factored load for this floor
+                const slabWeight = 24 * (floor.slabThickness / 1000); // kN/m² = kPa
+                const pu = 1.2 * (floor.dlSuper + slabWeight) + 1.6 * floor.liveLoad;
+                totalPuSum += pu;
 
-            // Step 5: Calculate beam reactions
-            calculateBeamReactions();
+                // Generate beams with this floor's pu
+                generateBeams(pu);
 
-            // Step 6: Calculate column loads (sum of beam reactions)
-            calculateColumnLoads();
+                // Calculate beam reactions
+                calculateBeamReactions();
+
+                // Calculate column loads for this floor
+                calculateColumnLoadsForFloor(floor.id);
+            }
+
+            // Average pu for display (or use current floor's pu)
+            const currentFloor = state.floors[state.currentFloorIndex];
+            const currentSlabWeight = 24 * (currentFloor.slabThickness / 1000);
+            const puDisplay = 1.2 * (currentFloor.dlSuper + currentSlabWeight) + 1.6 * currentFloor.liveLoad;
 
             // Update UI
-            updateResults(pu);
+            updateResults(puDisplay);
             draw();
+        }
+
+        /**
+         * Calculate column loads for a specific floor
+         * Adds to cumulative totals
+         */
+        function calculateColumnLoadsForFloor(floorId) {
+            for (let col of state.columns) {
+                let floorLoad = 0;
+                for (let beam of state.beams) {
+                    if (beam.startCol === col.id) floorLoad += beam.Rleft;
+                    if (beam.endCol === col.id) floorLoad += beam.Rright;
+                }
+                col.floorLoads.push({ floorId, load: floorLoad });
+                col.totalLoad += floorLoad;
+                col.loadPerFloor = floorLoad; // Last floor's load for current display
+            }
         }
 
         /**
@@ -1073,25 +1383,34 @@
             // Factored load
             document.getElementById('factoredLoad').textContent = pu.toFixed(2);
 
-            // Total per floor
-            const totalPerFloor = state.columns.reduce((sum, c) => sum + c.loadPerFloor, 0);
+            // Total per floor (use current selected floor)
+            const currentFloor = state.floors[state.currentFloorIndex];
+            const totalPerFloor = state.columns.reduce((sum, c) => {
+                const floorLoad = c.floorLoads.find(f => f.floorId === currentFloor.id);
+                return sum + (floorLoad ? floorLoad.load : 0);
+            }, 0);
             document.getElementById('totalPerFloor').textContent = totalPerFloor.toFixed(0);
 
-            // Max column
+            // Max column (total across all floors)
             const maxCol = state.columns.length
-                ? Math.max(...state.columns.map(c => c.loadPerFloor))
+                ? Math.max(...state.columns.map(c => c.totalLoad))
                 : 0;
             document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
 
-            // Column table
+            // Column table - show current floor load AND total
             const colBody = document.getElementById('columnResultsBody');
-            colBody.innerHTML = state.columns.map(col => `
+            colBody.innerHTML = state.columns.map(col => {
+                const floorLoad = col.floorLoads.find(f => f.floorId === currentFloor.id);
+                const thisFloor = floorLoad ? floorLoad.load : 0;
+                return `
                 <tr>
                     <td><strong>${col.id}</strong></td>
                     <td style="color:${col.type === 'corner' ? '#f59e0b' : col.type === 'edge' ? '#00d4ff' : '#10b981'}">${col.type}</td>
-                    <td>${col.loadPerFloor.toFixed(1)}</td>
+                    <td>${thisFloor.toFixed(1)}</td>
+                    <td><strong>${col.totalLoad.toFixed(1)}</strong></td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
 
             // Beam table
             const beamBody = document.getElementById('beamResultsBody');
@@ -1295,6 +1614,7 @@
         window.onload = function () {
             initCanvas();
             renderSpans();
+            renderFloorTabs();  // v2.3: Render floor tabs
             calculate();
             fitView();
         };
