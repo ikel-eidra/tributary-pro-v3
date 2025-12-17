@@ -852,6 +852,8 @@
             ctx = canvas.getContext('2d');
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
+            // v2.7: Click on column to toggle active state
+            canvas.addEventListener('click', handleCanvasClick);
         }
 
         function resizeCanvas() {
@@ -1342,6 +1344,11 @@
         /**
          * Step 2: Generate slab panels
          */
+        // v2.7: Helper to get column by grid indices
+        function getColumnAt(xi, yi) {
+            return state.columns.find(c => c.xi === xi && c.yi === yi);
+        }
+
         function generateSlabs() {
             state.slabs = [];
             const xCoords = [0];
@@ -1351,6 +1358,17 @@
 
             for (let yi = 0; yi < state.ySpans.length; yi++) {
                 for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    // v2.7: Skip slabs touching any inactive column
+                    const cornerCols = [
+                        getColumnAt(xi, yi),       // top-left
+                        getColumnAt(xi + 1, yi),   // top-right
+                        getColumnAt(xi, yi + 1),   // bottom-left
+                        getColumnAt(xi + 1, yi + 1) // bottom-right
+                    ];
+                    if (cornerCols.some(c => !c || c.active === false)) {
+                        continue; // Skip this slab
+                    }
+
                     const lx = state.xSpans[xi]; // Short span
                     const ly = state.ySpans[yi]; // Long span
 
@@ -1393,6 +1411,13 @@
             // Create beam objects with slices array
             for (let yi = 0; yi < yCoords.length; yi++) {
                 for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    // v2.7: Skip beams where either endpoint column is inactive
+                    const leftCol = getColumnAt(xi, yi);
+                    const rightCol = getColumnAt(xi + 1, yi);
+                    if (!leftCol || !rightCol || leftCol.active === false || rightCol.active === false) {
+                        continue;
+                    }
+
                     const beamSpan = state.xSpans[xi];
                     const beamId = `BX-${yi + 1}-${xi + 1}`;
 
@@ -1421,6 +1446,13 @@
             // Y-direction beams (along gridlines in X direction)
             for (let xi = 0; xi < xCoords.length; xi++) {
                 for (let yi = 0; yi < state.ySpans.length; yi++) {
+                    // v2.7: Skip beams where either endpoint column is inactive
+                    const topCol = getColumnAt(xi, yi);
+                    const bottomCol = getColumnAt(xi, yi + 1);
+                    if (!topCol || !bottomCol || topCol.active === false || bottomCol.active === false) {
+                        continue;
+                    }
+
                     const beamSpan = state.ySpans[yi];
                     const beamId = `BY-${xi + 1}-${yi + 1}`;
 
@@ -1741,6 +1773,29 @@
         }
 
         // ========== DRAWING ==========
+
+        // v2.7: Handle canvas click to toggle columns
+        function handleCanvasClick(event) {
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            const hitSize = 20; // px selection tolerance
+
+            // Find if we clicked on a column
+            const hit = state.columns.find(col => {
+                const x = col.x * state.scale + state.offsetX;
+                const y = col.y * state.scale + state.offsetY;
+                return Math.abs(clickX - x) <= hitSize && Math.abs(clickY - y) <= hitSize;
+            });
+
+            if (hit) {
+                hit.active = !hit.active;
+                calculate(); // Recalculate with updated column state
+            }
+        }
+
         function draw() {
             if (!ctx) return;
 
@@ -1753,9 +1808,9 @@
                 const w = slab.lx * state.scale;
                 const h = slab.ly * state.scale;
 
-                ctx.fillStyle = 'rgba(0, 212, 255, 0.1)';
+                ctx.fillStyle = 'rgba(0, 212, 255, 0.3)';  // v2.7: Increased from 0.1 to 0.3
                 ctx.fillRect(x1, y1, w, h);
-                ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
+                ctx.strokeStyle = 'rgba(0, 212, 255, 0.5)';  // v2.7: Increased from 0.3 to 0.5
                 ctx.strokeRect(x1, y1, w, h);
             }
 
@@ -1833,7 +1888,28 @@
                 const y = col.y * state.scale + state.offsetY;
                 const size = 12;
 
-                // Color by type
+                // v2.7: Draw red X for inactive (disabled) columns
+                if (col.active === false) {
+                    ctx.strokeStyle = '#ef4444'; // Red
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(x - size, y - size);
+                    ctx.lineTo(x + size, y + size);
+                    ctx.moveTo(x - size, y + size);
+                    ctx.lineTo(x + size, y - size);
+                    ctx.stroke();
+
+                    // Show ID label even for inactive
+                    if (state.showLabels) {
+                        ctx.fillStyle = '#ef4444';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(col.id, x, y - 16);
+                    }
+                    continue; // Skip normal drawing
+                }
+
+                // Color by type (active columns)
                 let color = '#10b981'; // Interior
                 if (col.type === 'corner') color = '#f59e0b';
                 else if (col.type === 'edge') color = '#00d4ff';
@@ -2159,6 +2235,9 @@
             const maxThick = Math.max(...state.columns.map(c => c.footingThick || 0.3));
 
             for (let col of state.columns) {
+                // v2.7: Skip footings for inactive columns
+                if (col.active === false) continue;
+
                 const size = col.footingSize || 0.8;
                 // Increase thickness for smaller footings so all tops are level
                 const baseThick = col.footingThick || 0.3;
