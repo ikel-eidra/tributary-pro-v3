@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tributary Pro v2.6 | Structural Load Analysis</title>
+    <title>Tributary Pro v2.7 | Structural Load Analysis</title>
     <style>
         /* ========== RESET & VARIABLES ========== */
         * {
@@ -545,7 +545,7 @@
     <header class="header">
         <div class="logo">
             <div class="logo-icon">📐</div>
-            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.6</span></h1>
+            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.7</span></h1>
         </div>
         <div class="header-actions">
             <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
@@ -751,6 +751,7 @@
                     <table class="results-table">
                         <thead>
                             <tr>
+                                <th title="Toggle to remove column (L/U shapes)">✓</th>
                                 <th>ID</th>
                                 <th>Type</th>
                                 <th>Floor (kN)</th>
@@ -802,11 +803,10 @@
 
             // v2.3: Floors array - per floor configurations
             // v2.7: Corrected floor logic:
-            //   GF = Ground columns (no slab unless GF Suspended)
-            //   2F = 2nd floor slab (roof of GF columns)
-            //   RF = Roof (roof of 2F columns)
+            //   Without GF Suspended: 2F | RF (2 tabs = 2 suspended slabs)
+            //   With GF Suspended: GF | 2F | RF (3 tabs = 3 suspended slabs)
+            //   GF tab is added dynamically when checkbox is checked
             floors: [
-                { id: 'GF', name: 'Ground Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, isRoof: false },
                 { id: '2F', name: '2nd Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, isRoof: false },
                 { id: 'RF', name: 'Roof', dlSuper: 1.5, liveLoad: 1.0, slabThickness: 120, height: 3.0, isRoof: true }
             ],
@@ -956,6 +956,7 @@
 
         function updateColumnTable() {
             const currentFloor = state.floors[state.currentFloorIndex];
+            if (!currentFloor) return;
 
             // Total per floor (use current selected floor)
             const totalPerFloor = state.columns.reduce((sum, c) => {
@@ -970,22 +971,36 @@
                 : 0;
             document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
 
-            // Column table - show current floor load, total, and footing size
+            // v2.7: Column table with toggle checkbox for L/U layouts
             const colBody = document.getElementById('columnResultsBody');
             colBody.innerHTML = state.columns.map(col => {
                 const floorLoad = col.floorLoads.find(f => f.floorId === currentFloor.id);
                 const thisFloor = floorLoad ? floorLoad.load : 0;
                 const footingStr = col.footingSize ? `${col.footingSize.toFixed(1)}×${col.footingSize.toFixed(1)}` : '-';
+                const isActive = col.active !== false;  // Default true if undefined
                 return `
-                <tr>
+                <tr style="${!isActive ? 'opacity:0.4;text-decoration:line-through;' : ''}">
+                    <td style="text-align:center;">
+                        <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleColumn('${col.id}')" style="cursor:pointer;width:16px;height:16px;">
+                    </td>
                     <td><strong>${col.id}</strong></td>
                     <td style="color:${col.type === 'corner' ? '#f59e0b' : col.type === 'edge' ? '#00d4ff' : '#10b981'}">${col.type}</td>
-                    <td>${thisFloor.toFixed(1)}</td>
-                    <td><strong>${col.totalLoad.toFixed(1)}</strong></td>
-                    <td style="color:#8b5cf6">${footingStr}</td>
+                    <td>${isActive ? thisFloor.toFixed(1) : '-'}</td>
+                    <td><strong>${isActive ? col.totalLoad.toFixed(1) : '-'}</strong></td>
+                    <td style="color:#8b5cf6">${isActive ? footingStr : '-'}</td>
                 </tr>
             `;
             }).join('');
+        }
+
+        // v2.7: Toggle column active state (for L/U layouts)
+        function toggleColumn(colId) {
+            const col = state.columns.find(c => c.id === colId);
+            if (col) {
+                col.active = !col.active;
+                calculate();  // Recalculate loads without this column
+                render3DFrame();  // Re-render 3D without this column
+            }
         }
 
         function updateFloorUI() {
@@ -1015,6 +1030,7 @@
         }
 
         // v2.6: Toggle GF suspended slab
+        // v2.7: Now dynamically adds/removes GF from floors array
         function toggleGFSuspended() {
             state.gfSuspended = document.getElementById('gfSuspended').checked;
 
@@ -1024,6 +1040,29 @@
                 elevSection.style.display = state.gfSuspended ? 'block' : 'none';
             }
 
+            // v2.7: Add or remove GF floor from array
+            const hasGF = state.floors.some(f => f.id === 'GF');
+
+            if (state.gfSuspended && !hasGF) {
+                // Add GF at the start
+                const elevHeight = parseFloat(document.getElementById('elevationHeight')?.value) || 1.2;
+                state.floors.unshift({
+                    id: 'GF',
+                    name: 'Ground Floor',
+                    dlSuper: 2.0,
+                    liveLoad: 2.0,
+                    slabThickness: 150,
+                    height: elevHeight,
+                    isRoof: false
+                });
+                state.currentFloorIndex = 0;
+            } else if (!state.gfSuspended && hasGF) {
+                // Remove GF from the start
+                state.floors.shift();
+                state.currentFloorIndex = 0;
+            }
+
+            renderFloorTabs();
             calculate();
         }
 
@@ -1262,6 +1301,8 @@
             }
 
             // Generate columns at intersections
+            // v2.7: Preserve active state from existing columns
+            const oldColumns = state.columns || [];
             state.columns = [];
             const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Skip I and O
 
@@ -1279,12 +1320,17 @@
                     if (isCorner) type = 'corner';
                     else if (isEdge) type = 'edge';
 
+                    // v2.7: Check if this column existed before and preserve its active state
+                    const oldCol = oldColumns.find(c => c.id === id);
+                    const isActive = oldCol ? oldCol.active : true;  // Preserve or default true
+
                     state.columns.push({
                         id,
                         x: xCoords[xi],
                         y: yCoords[yi],
                         xi, yi,
                         type,
+                        active: isActive,  // v2.7: Preserved toggle state for L/U shapes
                         loadPerFloor: 0,
                         totalLoad: 0,
                         connectedBeams: [] // Will store beam IDs
@@ -1680,15 +1726,18 @@
             `;
             }).join('');
 
-            // Beam table
+            // v2.7: Beam table - clickable rows for 3D highlighting
             const beamBody = document.getElementById('beamResultsBody');
-            beamBody.innerHTML = state.beams.slice(0, 20).map(beam => `
-                <tr>
+            beamBody.innerHTML = state.beams.slice(0, 20).map(beam => {
+                const isSelected = state.selectedMemberId === beam.id;
+                return `
+                <tr onclick="selectMember('${beam.id}')" style="cursor:pointer;${isSelected ? 'background:rgba(239,68,68,0.3);' : ''}" title="Click to highlight in 3D">
                     <td>${beam.id}</td>
                     <td>${beam.w.toFixed(1)}</td>
                     <td>${beam.Rleft.toFixed(1)}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         }
 
         // ========== DRAWING ==========
@@ -1996,9 +2045,14 @@
             state.floors.forEach((floor, fi) => {
                 const baseY = cumulativeY;  // Use cumulative height, not fi * height
 
-                // COLUMNS - vertical boxes
+                // COLUMNS - vertical boxes (skip inactive)
                 for (let col of state.columns) {
+                    // v2.7: Skip inactive columns (for L/U layouts)
+                    if (col.active === false) continue;
+
                     const geo = new THREE.BoxGeometry(colSize, floor.height, colSize);
+
+                    // Column color by type
                     const mat = new THREE.MeshStandardMaterial({
                         color: col.type === 'corner' ? 0xf59e0b :
                             col.type === 'edge' ? 0x00d4ff : 0x10b981
@@ -2011,8 +2065,15 @@
 
                 // Note: cumulativeY updated at end of forEach iteration
 
-                // BEAMS - at top of each floor
+                // BEAMS - at top of each floor (skip if connected to inactive columns)
                 for (let beam of state.beams) {
+                    // v2.7: Skip beams connected to inactive columns
+                    const startCol = state.columns.find(c => c.id === beam.startCol);
+                    const endCol = state.columns.find(c => c.id === beam.endCol);
+                    if ((startCol && startCol.active === false) || (endCol && endCol.active === false)) {
+                        continue;
+                    }
+
                     const length = Math.sqrt(
                         Math.pow(beam.x2 - beam.x1, 2) +
                         Math.pow(beam.y2 - beam.y1, 2)
@@ -2023,6 +2084,7 @@
                         ? new THREE.BoxGeometry(length, beamH, beamW)
                         : new THREE.BoxGeometry(beamW, beamH, length);
 
+                    // Beam color by direction
                     const mat = new THREE.MeshStandardMaterial({
                         color: beam.direction === 'X' ? 0x7c3aed : 0x10b981
                     });
