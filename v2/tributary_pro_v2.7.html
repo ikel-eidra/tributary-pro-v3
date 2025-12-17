@@ -1000,8 +1000,8 @@
             const col = state.columns.find(c => c.id === colId);
             if (col) {
                 col.active = !col.active;
-                recalculateColumnTypes(); // Recalculate corner/edge/interior types
                 calculate();  // Recalculate loads without this column
+                recalculateColumnTypes(); // Recalculate corner/edge/interior types AFTER calculate
                 render3DFrame();  // Re-render 3D without this column
             }
         }
@@ -1851,8 +1851,9 @@
 
             if (hit) {
                 hit.active = !hit.active;
-                recalculateColumnTypes(); // Update corner/edge/interior types
                 calculate(); // Recalculate with updated column state
+                recalculateColumnTypes(); // Update corner/edge/interior types AFTER calculate
+                draw(); // Redraw to show new colors
             }
         }
 
@@ -1868,10 +1869,11 @@
                 const w = slab.lx * state.scale;
                 const h = slab.ly * state.scale;
 
-                ctx.fillStyle = 'rgba(0, 212, 255, 0.5)';  // v2.7: Increased to 50% for visibility
+                // v2.7: MUCH more visible slab - 70% opacity with thick border
+                ctx.fillStyle = 'rgba(20, 40, 60, 0.7)';  // Dark blue-gray fill
                 ctx.fillRect(x1, y1, w, h);
-                ctx.strokeStyle = 'rgba(0, 212, 255, 0.8)';  // v2.7: Strong border
-                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#0ea5e9';  // Bright cyan border
+                ctx.lineWidth = 3;
                 ctx.strokeRect(x1, y1, w, h);
             }
 
