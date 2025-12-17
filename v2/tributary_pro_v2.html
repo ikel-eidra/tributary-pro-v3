@@ -448,6 +448,7 @@
                 <button class="tool-btn" onclick="zoomIn()">➕ Zoom In</button>
                 <button class="tool-btn" onclick="zoomOut()">➖ Zoom Out</button>
                 <button class="tool-btn" onclick="fitView()">⊡ Fit</button>
+                <button class="tool-btn active" id="toggleAreas" onclick="toggleAreas()">🟦 Areas</button>
                 <button class="tool-btn" id="toggleLabels" onclick="toggleLabels()">🏷️ Labels</button>
             </div>
             <div class="canvas-wrapper">
@@ -465,6 +466,11 @@
                     <div class="label">Total Slab Area</div>
                     <div class="value" id="totalArea">0</div>
                     <div class="unit">m²</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Area Balance</div>
+                    <div class="value" id="areaBalance">0%</div>
+                    <div class="unit" id="areaBalanceDetail">beam vs slab</div>
                 </div>
                 <div class="summary-card">
                     <div class="label">Factored Load</div>
@@ -486,6 +492,7 @@
             <!-- Column Results Table -->
             <div class="param-group">
                 <h3>🏛️ Column Loads (Per Floor)</h3>
+                <p style="color:#8b949e;font-size:0.8rem;margin:4px 0 8px;">Tip: Click any column on the canvas to toggle it off/on. Disabled columns show a red ✕.</p>
                 <div style="max-height: 300px; overflow-y: auto;">
                     <table class="results-table">
                         <thead>
@@ -547,13 +554,45 @@
             columns: [],             // Column objects
             beams: [],               // Beam objects
             slabs: [],               // Slab panel objects
+            tributaryRegions: [],    // Polygonal tributary regions for visualization/export
 
             // View state
             scale: 50,
             offsetX: 100,
             offsetY: 100,
-            showLabels: true
+            showLabels: true,
+            showAreas: true
         };
+
+        const MIN_SPAN = 0.25; // m, guard against zero/negative spans
+
+        function sanitizeSpan(value, fallback = 4.0) {
+            const numeric = parseFloat(value);
+            if (Number.isFinite(numeric) && numeric > MIN_SPAN) return numeric;
+            return fallback;
+        }
+
+        function computePolygonAreaAndCentroid(vertices) {
+            let area = 0;
+            let cx = 0;
+            let cy = 0;
+
+            for (let i = 0; i < vertices.length; i++) {
+                const { x: x0, y: y0 } = vertices[i];
+                const { x: x1, y: y1 } = vertices[(i + 1) % vertices.length];
+                const cross = x0 * y1 - x1 * y0;
+                area += cross;
+                cx += (x0 + x1) * cross;
+                cy += (y0 + y1) * cross;
+            }
+
+            area *= 0.5;
+            const signedArea = area !== 0 ? area : 1; // avoid division by zero
+            cx /= (6 * signedArea);
+            cy /= (6 * signedArea);
+
+            return { area: Math.abs(area), cx, cy };
+        }
 
         // ========== CANVAS SETUP ==========
         let canvas, ctx;
@@ -563,6 +602,7 @@
             ctx = canvas.getContext('2d');
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
+            canvas.addEventListener('click', handleCanvasClick);
         }
 
         function resizeCanvas() {
@@ -587,9 +627,9 @@
                 row.className = 'span-row';
                 row.innerHTML = `
                     <span style="color:#8b949e;font-size:0.7rem;width:30px;">${dir.toUpperCase()}${i + 1}</span>
-                    <input type="number" value="${span}" step="0.5" min="1" max="20"
+                    <input type="number" value="${span}" step="0.5" min="${MIN_SPAN}" max="20"
                            onchange="updateSpan('${dir}', ${i}, this.value)">
-                    <button class="remove-btn" onclick="removeSpan('${dir}', ${i})" 
+                    <button class="remove-btn" onclick="removeSpan('${dir}', ${i})"
                             ${spans.length <= 1 ? 'disabled' : ''}>×</button>
                 `;
                 container.appendChild(row);
@@ -598,7 +638,7 @@
 
         function updateSpan(dir, index, value) {
             const spans = dir === 'x' ? state.xSpans : state.ySpans;
-            spans[index] = parseFloat(value) || 4.0;
+            spans[index] = sanitizeSpan(value, spans[index] || 4.0);
             calculate();
         }
 
@@ -625,14 +665,21 @@
          * Implements: SLAB → BEAMS → COLUMNS load path
          */
         function calculate() {
+            // Preserve column active states before regenerating the grid
+            const previousActive = new Map(state.columns.map(c => [c.id, c.active ?? true]));
+
             // Read input values
             state.dlSuper = parseFloat(document.getElementById('dlSuper').value) || 2.0;
             state.liveLoad = parseFloat(document.getElementById('liveLoad').value) || 2.0;
             state.slabThickness = parseFloat(document.getElementById('slabThickness').value) || 150;
             state.numFloors = parseInt(document.getElementById('numFloors').value) || 3;
 
+            // Clean spans to avoid zero/negative values that could break width calculations
+            state.xSpans = state.xSpans.map(span => sanitizeSpan(span));
+            state.ySpans = state.ySpans.map(span => sanitizeSpan(span));
+
             // Step 1: Generate grid coordinates
-            generateGrid();
+            generateGrid(previousActive);
 
             // Step 2: Generate slab panels
             generateSlabs();
@@ -644,6 +691,9 @@
 
             // Step 4: Generate beams and calculate tributary widths
             generateBeams(pu);
+
+            // Step 4b: Build tributary polygons for visualization/export
+            buildTributaryRegions();
 
             // Step 5: Calculate beam reactions
             calculateBeamReactions();
@@ -660,7 +710,7 @@
          * Step 1: Generate grid from spans
          * Creates absolute coordinates for column positions
          */
-        function generateGrid() {
+        function generateGrid(previousActive = new Map()) {
             // Build X coordinates
             const xCoords = [0];
             for (let span of state.xSpans) {
@@ -697,12 +747,17 @@
                         y: yCoords[yi],
                         xi, yi,
                         type,
+                        active: previousActive.has(id) ? previousActive.get(id) : true,
                         loadPerFloor: 0,
                         totalLoad: 0,
                         connectedBeams: [] // Will store beam IDs
                     });
                 }
             }
+        }
+
+        function getColumn(xi, yi) {
+            return state.columns.find(c => c.xi === xi && c.yi === yi);
         }
 
         /**
@@ -717,6 +772,14 @@
 
             for (let yi = 0; yi < state.ySpans.length; yi++) {
                 for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    const topLeft = getColumn(xi, yi);
+                    const topRight = getColumn(xi + 1, yi);
+                    const bottomLeft = getColumn(xi, yi + 1);
+                    const bottomRight = getColumn(xi + 1, yi + 1);
+
+                    // Skip slabs touching any disabled column to create L/U shapes cleanly
+                    if ([topLeft, topRight, bottomLeft, bottomRight].some(c => !c || !c.active)) continue;
+
                     const lx = state.xSpans[xi]; // Short span
                     const ly = state.ySpans[yi]; // Long span
 
@@ -753,39 +816,15 @@
             const yCoords = [0];
             for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
 
-            // Generate X-direction beams (along gridlines in Y direction)
+            // Create beam objects with zero tributary areas first
             for (let yi = 0; yi < yCoords.length; yi++) {
                 for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    const colLeft = getColumn(xi, yi);
+                    const colRight = getColumn(xi + 1, yi);
+                    if (!colLeft || !colRight || !colLeft.active || !colRight.active) continue;
+
                     const beamSpan = state.xSpans[xi];
                     const beamId = `BX-${yi + 1}-${xi + 1}`;
-
-                    // Calculate tributary width for this beam
-                    // Gets triangular tributary from 2-way slab (45° rule)
-                    let tributaryArea = 0;
-
-                    // From slab below (if exists)
-                    if (yi > 0) {
-                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi - 1);
-                        if (slab && slab.isTwoWay) {
-                            // Triangular: area = lx * (lx/2) / 2 = lx²/4 per side
-                            // But since beam gets triangle from one slab side
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            tributaryArea += slab.lx * triHeight / 2;
-                        }
-                    }
-
-                    // From slab above (if exists)
-                    if (yi < state.ySpans.length) {
-                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi);
-                        if (slab && slab.isTwoWay) {
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            tributaryArea += slab.lx * triHeight / 2;
-                        }
-                    }
-
-                    // Equivalent uniform load
-                    const tributaryWidth = tributaryArea / beamSpan;
-                    const w = pu * tributaryWidth; // kN/m
 
                     state.beams.push({
                         id: beamId,
@@ -796,59 +835,24 @@
                         x2: xCoords[xi + 1],
                         y2: yCoords[yi],
                         span: beamSpan,
-                        tributaryWidth,
-                        tributaryArea,
-                        w,
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        w: 0,
                         Rleft: 0,
                         Rright: 0
                     });
                 }
             }
 
-            // Generate Y-direction beams (along gridlines in X direction)
+            // Y-direction beams (along gridlines in X direction)
             for (let xi = 0; xi < xCoords.length; xi++) {
                 for (let yi = 0; yi < state.ySpans.length; yi++) {
+                    const colTop = getColumn(xi, yi);
+                    const colBottom = getColumn(xi, yi + 1);
+                    if (!colTop || !colBottom || !colTop.active || !colBottom.active) continue;
+
                     const beamSpan = state.ySpans[yi];
                     const beamId = `BY-${xi + 1}-${yi + 1}`;
-
-                    let tributaryArea = 0;
-
-                    // From slab left (if exists)
-                    if (xi > 0) {
-                        const slab = state.slabs.find(s => s.xi === xi - 1 && s.yi === yi);
-                        if (slab && slab.isTwoWay) {
-                            // Trapezoidal for long direction
-                            // Area = (top + bottom) * height / 2
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            const trapBase = slab.ly;
-                            const trapTop = slab.ly - 2 * triHeight;
-                            if (trapTop > 0) {
-                                // Trapezoidal
-                                tributaryArea += (trapBase + trapTop) * triHeight / 2;
-                            } else {
-                                // Full triangle (when lx >= ly)
-                                tributaryArea += slab.ly * triHeight / 2;
-                            }
-                        }
-                    }
-
-                    // From slab right (if exists)
-                    if (xi < state.xSpans.length) {
-                        const slab = state.slabs.find(s => s.xi === xi && s.yi === yi);
-                        if (slab && slab.isTwoWay) {
-                            const triHeight = Math.min(slab.lx, slab.ly) / 2;
-                            const trapBase = slab.ly;
-                            const trapTop = slab.ly - 2 * triHeight;
-                            if (trapTop > 0) {
-                                tributaryArea += (trapBase + trapTop) * triHeight / 2;
-                            } else {
-                                tributaryArea += slab.ly * triHeight / 2;
-                            }
-                        }
-                    }
-
-                    const tributaryWidth = tributaryArea / beamSpan;
-                    const w = pu * tributaryWidth;
 
                     state.beams.push({
                         id: beamId,
@@ -859,14 +863,108 @@
                         x2: xCoords[xi],
                         y2: yCoords[yi + 1],
                         span: beamSpan,
-                        tributaryWidth,
-                        tributaryArea,
-                        w,
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        w: 0,
                         Rleft: 0,
                         Rright: 0
                     });
                 }
             }
+
+            // Map for quick access
+            const beamMap = Object.fromEntries(state.beams.map(beam => [beam.id, beam]));
+
+            // Distribute slab areas to adjacent beams
+            for (let slab of state.slabs) {
+                const topBeamId = `BX-${slab.yi + 1}-${slab.xi + 1}`;
+                const bottomBeamId = `BX-${slab.yi + 2}-${slab.xi + 1}`;
+                const leftBeamId = `BY-${slab.xi + 1}-${slab.yi + 1}`;
+                const rightBeamId = `BY-${slab.xi + 2}-${slab.yi + 1}`;
+
+                if (slab.isTwoWay) {
+                    const triHeight = Math.min(slab.lx, slab.ly) / 2;
+
+                    // Provisional areas based on 45° triangular/trapezoidal geometry
+                    const xSideArea = slab.lx * triHeight / 2; // triangle
+                    const trapBase = slab.ly;
+                    const trapTop = slab.ly - 2 * triHeight;
+                    const ySideArea = trapTop > 0
+                        ? (trapBase + trapTop) * triHeight / 2
+                        : slab.ly * triHeight / 2; // triangle when lines meet before midspan
+
+                    // Normalize so the four areas sum to the slab area
+                    const provisionalTotal = 2 * xSideArea + 2 * ySideArea;
+                    const scale = provisionalTotal > 0 ? slab.area / provisionalTotal : 0;
+
+                    const addToBeam = (id, area) => {
+                        if (beamMap[id]) beamMap[id].tributaryArea += area * scale;
+                    };
+
+                    addToBeam(topBeamId, xSideArea);
+                    addToBeam(bottomBeamId, xSideArea);
+                    addToBeam(leftBeamId, ySideArea);
+                    addToBeam(rightBeamId, ySideArea);
+                } else {
+                    // One-way spanning: load goes to beams parallel to long direction
+                    const addToBeam = (id) => {
+                        if (beamMap[id]) beamMap[id].tributaryArea += slab.area / 2;
+                    };
+
+                    if (slab.lx < slab.ly) {
+                        addToBeam(leftBeamId);
+                        addToBeam(rightBeamId);
+                    } else {
+                        addToBeam(topBeamId);
+                        addToBeam(bottomBeamId);
+                    }
+                }
+            }
+
+            // Finalize tributary widths and loads
+            for (let beam of state.beams) {
+                beam.tributaryWidth = beam.span > 0 ? beam.tributaryArea / beam.span : 0;
+                beam.w = pu * beam.tributaryWidth;
+            }
+        }
+
+        function buildTributaryRegions() {
+            const regions = [];
+
+            for (let beam of state.beams) {
+                const halfWidth = beam.tributaryWidth / 2;
+                if (!Number.isFinite(halfWidth) || beam.span <= 0 || halfWidth <= 0) continue;
+
+                let vertices;
+                if (beam.direction === 'X') {
+                    vertices = [
+                        { x: beam.x1, y: beam.y1 - halfWidth },
+                        { x: beam.x2, y: beam.y1 - halfWidth },
+                        { x: beam.x2, y: beam.y1 + halfWidth },
+                        { x: beam.x1, y: beam.y1 + halfWidth }
+                    ];
+                } else {
+                    vertices = [
+                        { x: beam.x1 - halfWidth, y: beam.y1 },
+                        { x: beam.x1 + halfWidth, y: beam.y1 },
+                        { x: beam.x1 + halfWidth, y: beam.y2 },
+                        { x: beam.x1 - halfWidth, y: beam.y2 }
+                    ];
+                }
+
+                const { area, cx, cy } = computePolygonAreaAndCentroid(vertices);
+
+                regions.push({
+                    id: `TR-${beam.id}`,
+                    beamId: beam.id,
+                    direction: beam.direction,
+                    vertices,
+                    area,
+                    centroid: { x: cx, y: cy }
+                });
+            }
+
+            state.tributaryRegions = regions;
         }
 
         /**
@@ -908,11 +1006,11 @@
                     colRight = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi + 1);
                 }
 
-                if (colLeft) {
+                if (colLeft && colLeft.active) {
                     colLeft.loadPerFloor += beam.Rleft;
                     colLeft.connectedBeams.push(beam.id);
                 }
-                if (colRight) {
+                if (colRight && colRight.active) {
                     colRight.loadPerFloor += beam.Rright;
                     colRight.connectedBeams.push(beam.id);
                 }
@@ -931,20 +1029,34 @@
             const totalArea = state.slabs.reduce((sum, s) => sum + s.area, 0);
             document.getElementById('totalArea').textContent = totalArea.toFixed(1);
 
+            // Beam tributary area check
+            const totalBeamArea = state.beams.reduce((sum, b) => sum + b.tributaryArea, 0);
+            const areaBalance = totalArea > 0 ? (totalBeamArea / totalArea) * 100 : 0;
+            const areaDelta = totalBeamArea - totalArea;
+            const balanceEl = document.getElementById('areaBalance');
+            const balanceDetailEl = document.getElementById('areaBalanceDetail');
+            balanceEl.textContent = `${areaBalance.toFixed(1)}%`;
+            balanceEl.style.color = Math.abs(areaDelta) < 0.01 ? 'var(--success)' : 'var(--warning)';
+            balanceDetailEl.textContent = `${areaDelta.toFixed(2)} m² diff`;
+
             // Factored load
             document.getElementById('factoredLoad').textContent = pu.toFixed(2);
 
             // Total per floor
-            const totalPerFloor = state.columns.reduce((sum, c) => sum + c.loadPerFloor, 0);
+            const activeColumns = state.columns.filter(c => c.active);
+
+            const totalPerFloor = activeColumns.reduce((sum, c) => sum + c.loadPerFloor, 0);
             document.getElementById('totalPerFloor').textContent = totalPerFloor.toFixed(0);
 
             // Max column
-            const maxCol = Math.max(...state.columns.map(c => c.loadPerFloor));
+            const maxCol = activeColumns.length
+                ? Math.max(...activeColumns.map(c => c.loadPerFloor))
+                : 0;
             document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
 
             // Column table
             const colBody = document.getElementById('columnResultsBody');
-            colBody.innerHTML = state.columns.map(col => `
+            colBody.innerHTML = activeColumns.map(col => `
                 <tr>
                     <td><strong>${col.id}</strong></td>
                     <td style="color:${col.type === 'corner' ? '#f59e0b' : col.type === 'edge' ? '#00d4ff' : '#10b981'}">${col.type}</td>
@@ -982,6 +1094,45 @@
                 ctx.strokeRect(x1, y1, w, h);
             }
 
+            // Draw tributary polygons
+            if (state.showAreas) {
+                for (let region of state.tributaryRegions) {
+                    const color = region.direction === 'X'
+                        ? 'rgba(124, 58, 237, 0.2)'
+                        : 'rgba(16, 185, 129, 0.2)';
+                    const stroke = region.direction === 'X' ? 'rgba(124,58,237,0.5)' : 'rgba(16,185,129,0.5)';
+
+                    ctx.beginPath();
+                    region.vertices.forEach((v, i) => {
+                        const px = v.x * state.scale + state.offsetX;
+                        const py = v.y * state.scale + state.offsetY;
+                        if (i === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    });
+                    ctx.closePath();
+                    ctx.fillStyle = color;
+                    ctx.strokeStyle = stroke;
+                    ctx.lineWidth = 2;
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Centroid marker and label
+                    const cx = region.centroid.x * state.scale + state.offsetX;
+                    const cy = region.centroid.y * state.scale + state.offsetY;
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (state.showLabels) {
+                        ctx.fillStyle = '#e6edf3';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`${region.area.toFixed(2)} m²`, cx, cy - 8);
+                    }
+                }
+            }
+
             // Draw beams
             ctx.lineWidth = 3;
             for (let beam of state.beams) {
@@ -1003,6 +1154,18 @@
                 const y = col.y * state.scale + state.offsetY;
                 const size = 12;
 
+                if (!col.active) {
+                    ctx.strokeStyle = '#f87171';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x - size, y - size);
+                    ctx.lineTo(x + size, y + size);
+                    ctx.moveTo(x - size, y + size);
+                    ctx.lineTo(x + size, y - size);
+                    ctx.stroke();
+                    continue;
+                }
+
                 // Color by type
                 let color = '#10b981'; // Interior
                 if (col.type === 'corner') color = '#f59e0b';
@@ -1021,6 +1184,26 @@
                     ctx.font = '9px sans-serif';
                     ctx.fillText(`${col.loadPerFloor.toFixed(0)} kN`, x, y + 20);
                 }
+            }
+        }
+
+        function handleCanvasClick(event) {
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            const hitSize = 14; // px selection tolerance
+
+            const hit = state.columns.find(col => {
+                const x = col.x * state.scale + state.offsetX;
+                const y = col.y * state.scale + state.offsetY;
+                return Math.abs(clickX - x) <= hitSize && Math.abs(clickY - y) <= hitSize;
+            });
+
+            if (hit) {
+                hit.active = !hit.active;
+                calculate();
             }
         }
 
@@ -1058,6 +1241,12 @@
             draw();
         }
 
+        function toggleAreas() {
+            state.showAreas = !state.showAreas;
+            document.getElementById('toggleAreas').classList.toggle('active', state.showAreas);
+            draw();
+        }
+
         function exportResults() {
             const data = {
                 parameters: {
@@ -1071,6 +1260,7 @@
                 columns: state.columns.map(c => ({
                     id: c.id,
                     type: c.type,
+                    active: c.active,
                     loadPerFloor: c.loadPerFloor,
                     totalLoad: c.totalLoad
                 })),
@@ -1078,6 +1268,14 @@
                     id: b.id,
                     w: b.w,
                     R: b.Rleft
+                })),
+                tributaryRegions: state.tributaryRegions.map(r => ({
+                    id: r.id,
+                    beamId: r.beamId,
+                    direction: r.direction,
+                    area: r.area,
+                    centroid: r.centroid,
+                    vertices: r.vertices
                 }))
             };
 
