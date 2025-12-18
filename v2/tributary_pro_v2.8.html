@@ -1,0 +1,2454 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tributary Pro v2.8 | Structural Load Analysis</title>
+    <style>
+        /* ========== RESET & VARIABLES ========== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #00d4ff;
+            --secondary: #7c3aed;
+            --dark-bg: #0d1117;
+            --panel-bg: #161b22;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-darker: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-primary: #e6edf3;
+            --text-muted: #8b949e;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #1a1f2e 50%, #0f1419 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+            font-size: 14px;
+        }
+
+        /* Scrollbar styles for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--panel-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ========== HEADER ========== */
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .logo h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .logo h1 span {
+            color: var(--primary);
+        }
+
+        .version-badge {
+            background: var(--secondary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* ========== MAIN LAYOUT ========== */
+        .app-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            height: calc(100vh - 60px);
+        }
+
+        .panel {
+            background: var(--glass);
+            border-right: 1px solid var(--border);
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .panel:last-child {
+            border-right: none;
+            border-left: 1px solid var(--border);
+        }
+
+        .panel-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #8b949e;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ========== INPUT GROUPS ========== */
+        .param-group {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .param-group h3 {
+            font-size: 0.8rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .param-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .param-item label {
+            display: block;
+            font-size: 0.7rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .param-item input,
+        .param-item select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+
+        .param-item input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* ========== SPAN INPUTS ========== */
+        .span-container {
+            margin-bottom: 12px;
+        }
+
+        .span-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .span-header h4 {
+            font-size: 0.75rem;
+            color: #8b949e;
+        }
+
+        .add-span-btn {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .span-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+
+        .span-row input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px 8px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+
+        .span-row .remove-btn {
+            background: rgba(255, 100, 100, 0.3);
+            color: #ff6b6b;
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* ========== CANVAS AREA ========== */
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            background: var(--darker);
+        }
+
+        .canvas-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: #8b949e;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .tool-btn.active {
+            background: var(--primary);
+            color: #000;
+            border-color: var(--primary);
+        }
+
+        .canvas-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #mainCanvas {
+            background: #0a0d10;
+            cursor: crosshair;
+        }
+
+        /* ========== RESULTS PANEL ========== */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .summary-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-card .label {
+            font-size: 0.65rem;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .summary-card .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .summary-card .unit {
+            font-size: 0.65rem;
+            color: #8b949e;
+        }
+
+        /* ========== RESULTS TABLE ========== */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+        }
+
+        .results-table th {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px;
+            text-align: left;
+            color: var(--primary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .results-table td {
+            padding: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .results-table tr:hover {
+            background: rgba(0, 212, 255, 0.05);
+        }
+
+        /* ========== BUTTONS ========== */
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        /* ========== LOAD PATH INDICATOR ========== */
+        .load-path {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(0, 212, 255, 0.1));
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .load-path h4 {
+            color: var(--success);
+            font-size: 0.75rem;
+            margin-bottom: 6px;
+        }
+
+        .load-path .path {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .load-path .arrow {
+            color: var(--primary);
+            margin: 0 8px;
+        }
+
+        /* ========== FLOOR TABS ========== */
+        .floor-tabs-container {
+            margin-bottom: 16px;
+        }
+
+        .floor-tabs-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .floor-tabs-header h4 {
+            font-size: 0.75rem;
+            color: var(--primary);
+        }
+
+        .floor-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .floor-tab {
+            padding: 6px 12px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: #8b949e;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .floor-tab:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .floor-tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-color: transparent;
+            color: white;
+        }
+
+        .floor-tab.roof {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .floor-tab.roof.active {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            color: white;
+        }
+
+        .add-floor-btn {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px dashed var(--success);
+            border-radius: 6px;
+            color: var(--success);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-floor-btn:hover {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .remove-floor-btn {
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px dashed var(--danger);
+            border-radius: 6px;
+            color: var(--danger);
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .remove-floor-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .floor-info {
+            background: rgba(0, 212, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 8px;
+        }
+
+        .floor-info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .floor-info-header h5 {
+            font-size: 0.75rem;
+            color: var(--primary);
+        }
+
+        .floor-type-badge {
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--secondary);
+            color: white;
+        }
+
+        .floor-type-badge.roof {
+            background: var(--warning);
+        }
+
+        /* ========== v2.4: VIEW TOGGLE ========== */
+        .view-toggle {
+            display: flex;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 8px;
+            margin-right: 8px;
+        }
+
+        .view-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: #8b949e;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: var(--primary);
+        }
+
+        .view-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-color: transparent;
+            color: white;
+        }
+
+        #container3D {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        #container3D.active {
+            display: block;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+        }
+    </style>
+
+    <!-- v2.4: Three.js for 3D View -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+
+<body>
+    <!-- ========== HEADER ========== -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">📐</div>
+            <h1>Tributary <span>Pro</span> <span class="version-badge">v2.8</span></h1>
+        </div>
+        <div class="header-actions">
+            <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
+            <button class="tool-btn" onclick="exportResults()">📤 Export</button>
+        </div>
+    </header>
+
+    <!-- ========== MAIN LAYOUT ========== -->
+    <div class="app-container">
+        <!-- ========== LEFT PANEL: INPUTS ========== -->
+        <div class="panel">
+            <div class="panel-header">📥 Input Parameters</div>
+
+            <!-- Load Path Indicator -->
+            <div class="load-path">
+                <h4>✅ v2.0 Load Path (Correct)</h4>
+                <div class="path">
+                    SLAB <span class="arrow">→</span>
+                    BEAMS <span class="arrow">→</span>
+                    COLUMNS
+                </div>
+            </div>
+
+            <!-- Grid Spans -->
+            <div class="param-group">
+                <h3>📏 X-Direction Spans (m)</h3>
+                <div id="xSpansContainer" class="span-container"></div>
+                <button class="add-span-btn" onclick="addSpan('x')">+ Add X Span</button>
+            </div>
+
+            <div class="param-group">
+                <h3>📐 Y-Direction Spans (m)</h3>
+                <div id="ySpansContainer" class="span-container"></div>
+                <button class="add-span-btn" onclick="addSpan('y')">+ Add Y Span</button>
+            </div>
+
+            <!-- v2.3: Floor Tabs -->
+            <div class="floor-tabs-container">
+                <div class="floor-tabs-header">
+                    <h4>🏢 Floors</h4>
+                </div>
+                <div class="floor-tabs" id="floorTabs">
+                    <!-- Dynamically populated -->
+                </div>
+                <div style="display: flex; gap: 4px; margin-top: 8px;">
+                    <button class="add-floor-btn" onclick="addFloor()">+ Add Floor</button>
+                    <button class="remove-floor-btn" onclick="removeFloor()">− Remove</button>
+                </div>
+
+                <!-- v2.6: GF Checkbox (suspended slabs start from 2F) -->
+                <div style="margin-top: 10px; padding: 8px; background: rgba(255,193,7,0.1); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.75rem;">
+                        <input type="checkbox" id="gfSuspended" onchange="toggleGFSuspended()">
+                        <span>🏠 GF Suspended (elevated house)</span>
+                    </label>
+                    <!-- Elevation Height - visible when GF Suspended is checked -->
+                    <div id="elevationSection" style="display: none; margin-top: 8px;">
+                        <label style="font-size: 0.65rem; color: #8b949e;">🏗️ Elevation Height:</label>
+                        <select id="elevationHeight" onchange="calculate()"
+                            style="width: 100%; padding: 4px; margin-top: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: white; font-size: 0.7rem;">
+                            <option value="0.9">0.9 m</option>
+                            <option value="1.0">1.0 m</option>
+                            <option value="1.2" selected>1.2 m</option>
+                            <option value="1.5">1.5 m</option>
+                            <option value="1.8">1.8 m</option>
+                        </select>
+                    </div>
+                    <div style="font-size: 0.65rem; color: #8b949e; margin-top: 4px;">
+                        If unchecked, GF slab loads are excluded (typical for ground-bearing slabs)
+                    </div>
+                </div>
+
+                <!-- v2.6: NSCP Building Type Preset -->
+                <div style="margin-top: 10px;">
+                    <label style="font-size: 0.7rem; color: #8b949e;">🏗️ NSCP Building Type:</label>
+                    <select id="buildingType" onchange="applyNSCPPreset()"
+                        style="width: 100%; padding: 6px; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; color: white;">
+                        <option value="residential">Residential (LL: 1.9 kPa)</option>
+                        <option value="residential_heavy">Residential Heavy (LL: 2.4 kPa)</option>
+                        <option value="office">Office (LL: 2.4 kPa)</option>
+                        <option value="commercial">Commercial/Retail (LL: 4.8 kPa)</option>
+                        <option value="school">School/Assembly (LL: 4.8 kPa)</option>
+                        <option value="hospital">Hospital (LL: 3.8 kPa)</option>
+                    </select>
+                </div>
+
+                <div class="floor-info" id="floorInfo">
+                    <div class="floor-info-header">
+                        <h5 id="currentFloorName">Ground Floor</h5>
+                        <span class="floor-type-badge" id="floorTypeBadge">Typical</span>
+                    </div>
+                    <div class="param-grid">
+                        <div class="param-item">
+                            <label>DL Super (kPa) <span style="font-size:0.6rem;color:#f59e0b"
+                                    title="Finishes, partitions, ceiling - NOT slab weight">ⓘ</span></label>
+                            <input type="number" id="floorDL" value="2.0" step="0.5" min="0"
+                                onchange="updateCurrentFloor()">
+                        </div>
+                        <div class="param-item">
+                            <label>Live Load (kPa) <span style="font-size:0.6rem;color:#f59e0b"
+                                    title="Can be higher for roof parties/water tanks">ⓘ</span></label>
+                            <input type="number" id="floorLL" value="2.0" step="0.5" min="0"
+                                onchange="updateCurrentFloor()">
+                        </div>
+                        <div class="param-item">
+                            <label>Slab Thickness (mm)</label>
+                            <input type="number" id="floorSlabThickness" value="150" step="10" min="100"
+                                onchange="updateCurrentFloor()">
+                        </div>
+                        <div class="param-item">
+                            <label>Height (m)</label>
+                            <input type="number" id="floorHeight" value="3.0" step="0.1" min="2.5"
+                                onchange="updateCurrentFloor()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- v2.5: Footing Parameters -->
+            <div class="param-group">
+                <h3>🏗️ Footing Parameters</h3>
+                <div class="param-grid">
+                    <div class="param-item">
+                        <label>Depth (m)</label>
+                        <select id="footingDepth" onchange="calculate()">
+                            <option value="1.2">1.2 m</option>
+                            <option value="1.5" selected>1.5 m</option>
+                            <option value="1.8">1.8 m</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>Soil Bearing (kPa)</label>
+                        <input type="number" id="soilBearing" value="150" step="10" min="50" onchange="calculate()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calculate Button -->
+            <button class="action-btn" onclick="calculate()">
+                🔄 Calculate Loads
+            </button>
+        </div>
+
+        <!-- ========== CENTER: CANVAS ========== -->
+        <div class="canvas-container">
+            <div class="canvas-toolbar">
+                <!-- v2.4: View Toggle -->
+                <div class="view-toggle">
+                    <button class="view-btn active" id="view2D" onclick="setView('2d')">📐 2D Plan</button>
+                    <button class="view-btn" id="view3D" onclick="setView('3d')">🏗️ 3D View</button>
+                </div>
+                <button class="tool-btn" id="panTool" onclick="togglePan()">✋ Pan</button>
+                <button class="tool-btn" onclick="zoomIn()">➕ Zoom In</button>
+                <button class="tool-btn" onclick="zoomOut()">➖ Zoom Out</button>
+                <button class="tool-btn" onclick="fitView()">⊡ Fit</button>
+                <button class="tool-btn active" id="toggleAreas" onclick="toggleAreas()">🔺 Areas</button>
+                <button class="tool-btn" id="toggleLabels" onclick="toggleLabels()">🏷️ Labels</button>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="mainCanvas"></canvas>
+                <!-- v2.4: 3D Container -->
+                <div id="container3D"></div>
+            </div>
+        </div>
+
+        <!-- ========== RIGHT PANEL: RESULTS ========== -->
+        <div class="panel">
+            <div class="panel-header">📊 Results</div>
+
+            <!-- Summary Cards -->
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="label">Total Slab Area</div>
+                    <div class="value" id="totalArea">0</div>
+                    <div class="unit">m²</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Area Balance</div>
+                    <div class="value" id="areaBalance">0%</div>
+                    <div class="unit" id="areaBalanceDetail">beam vs slab</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Factored Load</div>
+                    <div class="value" id="factoredLoad">0</div>
+                    <div class="unit">kPa</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Total/Floor</div>
+                    <div class="value" id="totalPerFloor">0</div>
+                    <div class="unit">kN</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Max Column</div>
+                    <div class="value" id="maxColumn">0</div>
+                    <div class="unit">kN</div>
+                </div>
+            </div>
+
+            <!-- Column Results Table -->
+            <div class="param-group">
+                <h3>🏛️ Column Loads & Footings</h3>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th title="Toggle to remove column (L/U shapes)">✓</th>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>Floor (kN)</th>
+                                <th>Total (kN)</th>
+                                <th>Footing (m)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="columnResultsBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Beam Results -->
+            <div class="param-group">
+                <h3>📏 Beam Loads</h3>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th>Beam</th>
+                                <th>w (kN/m)</th>
+                                <th>R (kN)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="beamResultsBody">
+                            <!-- Dynamic content -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+        // ========================================
+        // TRIBUTARY PRO v2.0 - CORE ENGINE
+        // ========================================
+        // Load Path: SLAB → BEAMS → COLUMNS
+        // Per Lum's Refined Spec (Dec 15, 2025)
+        // ========================================
+
+        // ========== STATE ==========
+        const state = {
+            xSpans: [4.0, 4.0],      // X-direction bay sizes (m)
+            ySpans: [5.0, 5.0],      // Y-direction bay sizes (m)
+
+            // v2.3: Floors array - per floor configurations
+            // v2.7: Corrected floor logic:
+            //   Without GF Suspended: 2F | RF (2 tabs = 2 suspended slabs)
+            //   With GF Suspended: GF | 2F | RF (3 tabs = 3 suspended slabs)
+            //   GF tab is added dynamically when checkbox is checked
+            floors: [
+                { id: '2F', name: '2nd Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, isRoof: false },
+                { id: 'RF', name: 'Roof', dlSuper: 1.5, liveLoad: 1.0, slabThickness: 120, height: 3.0, isRoof: true }
+            ],
+            currentFloorIndex: 0,    // Which floor is selected
+
+            // Generated data
+            columns: [],             // Column objects
+            beams: [],               // Beam objects
+            slabs: [],               // Slab panel objects
+
+            // View state
+            scale: 50,
+            offsetX: 100,
+            offsetY: 100,
+            showLabels: true,
+            showAreas: true,  // v2.2: show slice polygons by default
+            isPanning: false, // v2.4: pan mode
+            isDragging: false,
+            lastMouseX: 0,
+            lastMouseY: 0,
+
+            // v2.5: Footing state
+            footingDepth: 1.5,
+            soilBearing: 150,  // kPa
+
+            // v2.6: GF suspended toggle
+            gfSuspended: false,  // If false, GF slab loads excluded (ground-bearing)
+
+            // v2.8: Tie beam sizing (calculated from longest span)
+            // Depth = max(longestSpan/10, 0.3m), Width = max(largestFooting, 0.25m)
+            tieBeamH: 0.4,   // m - will be calculated
+            tieBeamW: 0.25   // m - will be calculated
+        };
+
+        const MIN_SPAN = 0.25; // m, guard against zero/negative spans
+
+        function sanitizeSpan(value, fallback = 4.0) {
+            const numeric = parseFloat(value);
+            if (Number.isFinite(numeric) && numeric > MIN_SPAN) return numeric;
+            return fallback;
+        }
+
+        // ========== CANVAS SETUP ==========
+        let canvas, ctx;
+
+        function initCanvas() {
+            canvas = document.getElementById('mainCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            // v2.7: Click on column to toggle active state
+            canvas.addEventListener('click', handleCanvasClick);
+        }
+
+        function resizeCanvas() {
+            const wrapper = canvas.parentElement;
+            canvas.width = wrapper.clientWidth;
+            canvas.height = wrapper.clientHeight;
+            draw();
+        }
+
+        // ========== SPAN UI ==========
+        function renderSpans() {
+            renderSpanInputs('x', state.xSpans, 'xSpansContainer');
+            renderSpanInputs('y', state.ySpans, 'ySpansContainer');
+        }
+
+        function renderSpanInputs(dir, spans, containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            spans.forEach((span, i) => {
+                const row = document.createElement('div');
+                row.className = 'span-row';
+                row.innerHTML = `
+                    <span style="color:#8b949e;font-size:0.7rem;width:30px;">${dir.toUpperCase()}${i + 1}</span>
+                    <input type="number" value="${span}" step="0.5" min="${MIN_SPAN}" max="20"
+                           onchange="updateSpan('${dir}', ${i}, this.value)">
+                    <button class="remove-btn" onclick="removeSpan('${dir}', ${i})"
+                            ${spans.length <= 1 ? 'disabled' : ''}>×</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function updateSpan(dir, index, value) {
+            const spans = dir === 'x' ? state.xSpans : state.ySpans;
+            spans[index] = sanitizeSpan(value, spans[index] || 4.0);
+            calculate();
+        }
+
+        function addSpan(dir) {
+            const spans = dir === 'x' ? state.xSpans : state.ySpans;
+            spans.push(4.0);
+            renderSpans();
+            calculate();
+        }
+
+        function removeSpan(dir, index) {
+            const spans = dir === 'x' ? state.xSpans : state.ySpans;
+            if (spans.length > 1) {
+                spans.splice(index, 1);
+                renderSpans();
+                calculate();
+            }
+        }
+
+        // ========== v2.3: FLOOR TABS UI ==========
+
+        function getFloorId(index, total) {
+            if (index === 0) return 'GF';
+            if (index === total - 1) return 'RF';
+            return `${index + 1}F`;
+        }
+
+        function getFloorName(id, isRoof) {
+            if (id === 'GF') return 'Ground Floor';
+            if (isRoof || id === 'RF') return 'Roof';
+            return `${id.replace('F', '')}${['st', 'nd', 'rd'][parseInt(id) - 2] || 'th'} Floor`;
+        }
+
+        function renderFloorTabs() {
+            const container = document.getElementById('floorTabs');
+            container.innerHTML = '';
+
+            state.floors.forEach((floor, i) => {
+                const btn = document.createElement('button');
+                btn.className = `floor-tab${i === state.currentFloorIndex ? ' active' : ''}${floor.isRoof ? ' roof' : ''}`;
+                btn.textContent = floor.id;
+                btn.onclick = () => selectFloor(i);
+                container.appendChild(btn);
+            });
+
+            updateFloorUI();
+        }
+
+        function selectFloor(index) {
+            state.currentFloorIndex = index;
+            renderFloorTabs();
+
+            // Refresh column table to show this floor's loads
+            if (state.columns.length > 0) {
+                const currentFloor = state.floors[state.currentFloorIndex];
+                const currentSlabWeight = 24 * (currentFloor.slabThickness / 1000);
+                const puDisplay = 1.2 * (currentFloor.dlSuper + currentSlabWeight) + 1.6 * currentFloor.liveLoad;
+
+                // Update factored load display
+                document.getElementById('factoredLoad').textContent = puDisplay.toFixed(2);
+
+                // Update column table
+                updateColumnTable();
+            }
+        }
+
+        function updateColumnTable() {
+            const currentFloor = state.floors[state.currentFloorIndex];
+            if (!currentFloor) return;
+
+            // Total per floor (use current selected floor)
+            const totalPerFloor = state.columns.reduce((sum, c) => {
+                const floorLoad = c.floorLoads.find(f => f.floorId === currentFloor.id);
+                return sum + (floorLoad ? floorLoad.load : 0);
+            }, 0);
+            document.getElementById('totalPerFloor').textContent = totalPerFloor.toFixed(0);
+
+            // Max column (total across all floors)
+            const maxCol = state.columns.length
+                ? Math.max(...state.columns.map(c => c.totalLoad))
+                : 0;
+            document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
+
+            // v2.7: Column table with toggle checkbox for L/U layouts
+            const colBody = document.getElementById('columnResultsBody');
+            colBody.innerHTML = state.columns.map(col => {
+                const floorLoad = col.floorLoads.find(f => f.floorId === currentFloor.id);
+                const thisFloor = floorLoad ? floorLoad.load : 0;
+                const footingStr = col.footingSize ? `${col.footingSize.toFixed(1)}×${col.footingSize.toFixed(1)}` : '-';
+                const isActive = col.active !== false;  // Default true if undefined
+                return `
+                <tr style="${!isActive ? 'opacity:0.4;text-decoration:line-through;' : ''}">
+                    <td style="text-align:center;">
+                        <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleColumn('${col.id}')" style="cursor:pointer;width:16px;height:16px;">
+                    </td>
+                    <td><strong>${col.id}</strong></td>
+                    <td style="color:${col.type === 'corner' ? '#f59e0b' : col.type === 'edge' ? '#00d4ff' : '#10b981'}">${col.type}</td>
+                    <td>${isActive ? thisFloor.toFixed(1) : '-'}</td>
+                    <td><strong>${isActive ? col.totalLoad.toFixed(1) : '-'}</strong></td>
+                    <td style="color:#8b5cf6">${isActive ? footingStr : '-'}</td>
+                </tr>
+            `;
+            }).join('');
+        }
+
+        // v2.7: Toggle column active state (for L/U layouts)
+        function toggleColumn(colId) {
+            const col = state.columns.find(c => c.id === colId);
+            if (col) {
+                col.active = !col.active;
+                calculate();  // Recalculate loads without this column
+                recalculateColumnTypes(); // Recalculate corner/edge/interior types AFTER calculate
+                render3DFrame();  // Re-render 3D without this column
+            }
+        }
+
+        // v2.7: Recalculate column types based on ACTIVE columns only
+        // This identifies new corners/edges when columns are disabled (for L/U shapes)
+        function recalculateColumnTypes() {
+            const maxXi = Math.max(...state.columns.map(c => c.xi));
+            const maxYi = Math.max(...state.columns.map(c => c.yi));
+
+            // Helper: check if active column exists at grid position
+            function hasActiveAt(xi, yi) {
+                const col = state.columns.find(c => c.xi === xi && c.yi === yi);
+                return col && col.active !== false;
+            }
+
+            for (let col of state.columns) {
+                if (col.active === false) continue; // Skip disabled columns
+
+                const { xi, yi } = col;
+
+                // Count active neighbors in each direction
+                const hasLeft = hasActiveAt(xi - 1, yi);
+                const hasRight = hasActiveAt(xi + 1, yi);
+                const hasUp = hasActiveAt(xi, yi - 1);
+                const hasDown = hasActiveAt(xi, yi + 1);
+
+                // Also check diagonals for re-entrant corner detection
+                const hasUpLeft = hasActiveAt(xi - 1, yi - 1);
+                const hasUpRight = hasActiveAt(xi + 1, yi - 1);
+                const hasDownLeft = hasActiveAt(xi - 1, yi + 1);
+                const hasDownRight = hasActiveAt(xi + 1, yi + 1);
+
+                const horizNeighbors = (hasLeft ? 1 : 0) + (hasRight ? 1 : 0);
+                const vertNeighbors = (hasUp ? 1 : 0) + (hasDown ? 1 : 0);
+                const totalNeighbors = horizNeighbors + vertNeighbors;
+
+                // Determine column type based on orthogonal neighbors ONLY
+                // Diagonal gaps don't make a column a corner - structural load still goes through orthogonal neighbors
+
+                if (totalNeighbors === 4) {
+                    // Has neighbors on all 4 sides = always interior
+                    col.type = 'interior';
+                } else if (totalNeighbors === 3) {
+                    // Missing 1 orthogonal neighbor = edge column
+                    col.type = 'edge';
+                } else if (totalNeighbors === 2) {
+                    // Check if L-shape (corner) or in-line (edge)
+                    const isLShape = (hasLeft && hasUp) || (hasLeft && hasDown) ||
+                        (hasRight && hasUp) || (hasRight && hasDown);
+                    col.type = isLShape ? 'corner' : 'edge';
+                } else {
+                    // 0 or 1 neighbor = corner (edge case)
+                    col.type = 'corner';
+                }
+            }
+        }
+
+        function updateFloorUI() {
+            const floor = state.floors[state.currentFloorIndex];
+            if (!floor) return;
+
+            document.getElementById('currentFloorName').textContent = floor.name;
+            document.getElementById('floorTypeBadge').textContent = floor.isRoof ? 'Roof' : 'Typical';
+            document.getElementById('floorTypeBadge').className = `floor-type-badge${floor.isRoof ? ' roof' : ''}`;
+
+            document.getElementById('floorDL').value = floor.dlSuper;
+            document.getElementById('floorLL').value = floor.liveLoad;
+            document.getElementById('floorSlabThickness').value = floor.slabThickness;
+            document.getElementById('floorHeight').value = floor.height;
+        }
+
+        function updateCurrentFloor() {
+            const floor = state.floors[state.currentFloorIndex];
+            if (!floor) return;
+
+            floor.dlSuper = parseFloat(document.getElementById('floorDL').value) || 2.0;
+            floor.liveLoad = parseFloat(document.getElementById('floorLL').value) || 2.0;
+            floor.slabThickness = parseFloat(document.getElementById('floorSlabThickness').value) || 150;
+            floor.height = parseFloat(document.getElementById('floorHeight').value) || 3.0;
+
+            calculate();
+        }
+
+        // v2.6: Toggle GF suspended slab
+        // v2.7: Now dynamically adds/removes GF from floors array
+        function toggleGFSuspended() {
+            state.gfSuspended = document.getElementById('gfSuspended').checked;
+
+            // Show/hide elevation height dropdown
+            const elevSection = document.getElementById('elevationSection');
+            if (elevSection) {
+                elevSection.style.display = state.gfSuspended ? 'block' : 'none';
+            }
+
+            // v2.7: Add or remove GF floor from array
+            const hasGF = state.floors.some(f => f.id === 'GF');
+
+            if (state.gfSuspended && !hasGF) {
+                // Add GF at the start
+                const elevHeight = parseFloat(document.getElementById('elevationHeight')?.value) || 1.2;
+                state.floors.unshift({
+                    id: 'GF',
+                    name: 'Ground Floor',
+                    dlSuper: 2.0,
+                    liveLoad: 2.0,
+                    slabThickness: 150,
+                    height: elevHeight,
+                    isRoof: false
+                });
+                state.currentFloorIndex = 0;
+            } else if (!state.gfSuspended && hasGF) {
+                // Remove GF from the start
+                state.floors.shift();
+                state.currentFloorIndex = 0;
+            }
+
+            renderFloorTabs();
+            calculate();
+        }
+
+        // v2.6: Apply NSCP preset DL/LL values
+        const NSCP_PRESETS = {
+            residential: { dlSuper: 1.5, liveLoad: 1.9, roofLL: 1.0, name: 'Residential' },
+            residential_heavy: { dlSuper: 2.0, liveLoad: 2.4, roofLL: 1.0, name: 'Residential (Heavy)' },
+            office: { dlSuper: 2.0, liveLoad: 2.4, roofLL: 1.0, name: 'Office' },
+            commercial: { dlSuper: 2.5, liveLoad: 4.8, roofLL: 1.5, name: 'Commercial/Retail' },
+            school: { dlSuper: 2.0, liveLoad: 4.8, roofLL: 1.0, name: 'School/Assembly' },
+            hospital: { dlSuper: 2.5, liveLoad: 3.8, roofLL: 1.0, name: 'Hospital' }
+        };
+
+        function applyNSCPPreset() {
+            const type = document.getElementById('buildingType').value;
+            const preset = NSCP_PRESETS[type];
+            if (!preset) return;
+
+            // Apply to all floors
+            for (let floor of state.floors) {
+                floor.dlSuper = preset.dlSuper;
+                floor.liveLoad = floor.isRoof ? preset.roofLL : preset.liveLoad;
+            }
+
+            // Update current floor UI
+            updateFloorUI();
+            calculate();
+        }
+
+        function addFloor() {
+            const total = state.floors.length;
+            // Insert before roof (last)
+            const insertIndex = total > 0 && state.floors[total - 1].isRoof ? total - 1 : total;
+
+            // Rename existing floors
+            state.floors.forEach((f, i) => {
+                if (i < insertIndex && !f.isRoof && f.id !== 'GF') {
+                    // Keep as is
+                }
+            });
+
+            const newFloor = {
+                id: `${insertIndex + 1}F`,
+                name: `${insertIndex + 1}${['st', 'nd', 'rd'][insertIndex - 1] || 'th'} Floor`,
+                dlSuper: 2.0,
+                liveLoad: 2.0,
+                slabThickness: 150,
+                height: 3.0,
+                isRoof: false
+            };
+
+            state.floors.splice(insertIndex, 0, newFloor);
+
+            // Update IDs for all floors
+            state.floors.forEach((f, i) => {
+                if (i === 0) {
+                    f.id = 'GF';
+                    f.name = 'Ground Floor';
+                } else if (i === state.floors.length - 1 && f.isRoof) {
+                    f.id = 'RF';
+                    f.name = 'Roof';
+                } else {
+                    f.id = `${i + 1}F`;
+                    f.name = `${i + 1}${['st', 'nd', 'rd'][i - 1] || 'th'} Floor`;
+                }
+            });
+
+            renderFloorTabs();
+            calculate();
+        }
+
+        function removeFloor() {
+            if (state.floors.length <= 2) return; // Keep at least GF + RF
+
+            // Remove the currently selected floor (unless it's GF or RF)
+            const floor = state.floors[state.currentFloorIndex];
+            if (floor.id === 'GF' || floor.isRoof) {
+                // Can't remove GF or RF, remove the last typical floor instead
+                const lastTypical = state.floors.findLastIndex(f => !f.isRoof && f.id !== 'GF');
+                if (lastTypical > 0) {
+                    state.floors.splice(lastTypical, 1);
+                }
+            } else {
+                state.floors.splice(state.currentFloorIndex, 1);
+            }
+
+            // Clamp current floor index
+            if (state.currentFloorIndex >= state.floors.length) {
+                state.currentFloorIndex = state.floors.length - 1;
+            }
+
+            // Rename remaining floors
+            state.floors.forEach((f, i) => {
+                if (i === 0) {
+                    f.id = 'GF';
+                    f.name = 'Ground Floor';
+                } else if (f.isRoof) {
+                    f.id = 'RF';
+                    f.name = 'Roof';
+                } else {
+                    f.id = `${i + 1}F`;
+                    f.name = `${i + 1}${['st', 'nd', 'rd'][i - 1] || 'th'} Floor`;
+                }
+            });
+
+            renderFloorTabs();
+            calculate();
+        }
+
+        // ========== CORE CALCULATIONS ==========
+
+        /**
+         * Main calculation function
+         * Implements: SLAB → BEAMS → COLUMNS load path
+         * v2.3: Calculates per-floor and cumulative across all floors
+         */
+        function calculate() {
+            // Clean spans to avoid zero/negative values
+            state.xSpans = state.xSpans.map(span => sanitizeSpan(span));
+            state.ySpans = state.ySpans.map(span => sanitizeSpan(span));
+
+            // Step 1: Generate grid coordinates
+            generateGrid();
+
+            // Step 2: Generate slab panels (same for all floors)
+            generateSlabs();
+
+            // Reset cumulative column loads
+            for (let col of state.columns) {
+                col.loadPerFloor = 0;
+                col.totalLoad = 0;
+                col.floorLoads = [];
+            }
+
+            // v2.3: Calculate loads for each floor
+            let totalPuSum = 0;
+            for (let floor of state.floors) {
+                // v2.6: Skip GF if not suspended (ground-bearing slab)
+                if (floor.id === 'GF' && !state.gfSuspended) {
+                    // Store 0 load for GF to keep array consistent
+                    for (let col of state.columns) {
+                        col.floorLoads.push({ floorId: floor.id, load: 0 });
+                    }
+                    continue;
+                }
+
+                // Calculate factored load for this floor
+                const slabWeight = 24 * (floor.slabThickness / 1000); // kN/m² = kPa
+                const pu = 1.2 * (floor.dlSuper + slabWeight) + 1.6 * floor.liveLoad;
+                totalPuSum += pu;
+
+                // Generate beams with this floor's pu
+                generateBeams(pu);
+
+                // Calculate beam reactions
+                calculateBeamReactions();
+
+                // Calculate column loads for this floor
+                calculateColumnLoadsForFloor(floor.id);
+            }
+
+            // Average pu for display (or use current floor's pu)
+            const currentFloor = state.floors[state.currentFloorIndex];
+            const currentSlabWeight = 24 * (currentFloor.slabThickness / 1000);
+            const puDisplay = 1.2 * (currentFloor.dlSuper + currentSlabWeight) + 1.6 * currentFloor.liveLoad;
+
+            // v2.5: Read footing parameters and calculate footing sizes
+            state.footingDepth = parseFloat(document.getElementById('footingDepth').value) || 1.5;
+            state.soilBearing = parseFloat(document.getElementById('soilBearing').value) || 150;
+            calculateFootingSizes();
+
+            // Update UI
+            updateResults(puDisplay);
+            draw();
+        }
+
+        /**
+         * v2.5: Calculate footing sizes based on total column load
+         * Simple formula: A_req = P / q_allow
+         * Size = sqrt(A_req), rounded up to 0.1m
+         */
+        function calculateFootingSizes() {
+            const q = state.soilBearing; // kPa
+
+            for (let col of state.columns) {
+                // Use unfactored load (divided by ~1.4 average factor)
+                const P_service = col.totalLoad / 1.4; // kN
+
+                // Required area
+                const A_req = P_service / q; // m²
+
+                // Square footing side (round to 0.1m, min 0.6m)
+                let side = Math.sqrt(A_req);
+                side = Math.max(0.6, Math.ceil(side * 10) / 10);
+
+                // Thickness estimate (simple: h = side/4, min 0.3m)
+                let thick = Math.max(0.3, Math.round(side / 4 * 10) / 10);
+
+                col.footingSize = side;      // m
+                col.footingThick = thick;    // m
+            }
+
+            // v2.8: Calculate uniform tie beam sizing from longest span
+            const longestSpan = Math.max(...state.xSpans, ...state.ySpans);
+            const largestFootingWidth = Math.max(...state.columns.filter(c => c.active !== false).map(c => c.footingSize || 0.6));
+
+            // Tie beam depth = max(longestSpan/10, 0.3m) - rounded to 50mm
+            state.tieBeamH = Math.max(0.3, Math.ceil(longestSpan / 10 * 20) / 20);
+            // Tie beam width = max(largestFooting width, 0.25m) - rounded to 50mm
+            state.tieBeamW = Math.max(0.25, Math.ceil(largestFootingWidth * 20) / 20);
+
+            console.log(`v2.8: Tie beam sizing - H: ${(state.tieBeamH * 1000).toFixed(0)}mm, W: ${(state.tieBeamW * 1000).toFixed(0)}mm (from longest span ${longestSpan.toFixed(1)}m)`);
+        }
+
+        /**
+         * Calculate column loads for a specific floor
+         * Adds to cumulative totals
+         */
+        function calculateColumnLoadsForFloor(floorId) {
+            for (let col of state.columns) {
+                let floorLoad = 0;
+                for (let beam of state.beams) {
+                    if (beam.startCol === col.id) floorLoad += beam.Rleft;
+                    if (beam.endCol === col.id) floorLoad += beam.Rright;
+                }
+                col.floorLoads.push({ floorId, load: floorLoad });
+                col.totalLoad += floorLoad;
+                col.loadPerFloor = floorLoad; // Last floor's load for current display
+            }
+        }
+
+        /**
+         * Step 1: Generate grid from spans
+         * Creates absolute coordinates for column positions
+         */
+        function generateGrid() {
+            // Build X coordinates
+            const xCoords = [0];
+            for (let span of state.xSpans) {
+                xCoords.push(xCoords[xCoords.length - 1] + span);
+            }
+
+            // Build Y coordinates
+            const yCoords = [0];
+            for (let span of state.ySpans) {
+                yCoords.push(yCoords[yCoords.length - 1] + span);
+            }
+
+            // Generate columns at intersections
+            // v2.7: Preserve active state from existing columns
+            const oldColumns = state.columns || [];
+            state.columns = [];
+            const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Skip I and O
+
+            for (let yi = 0; yi < yCoords.length; yi++) {
+                for (let xi = 0; xi < xCoords.length; xi++) {
+                    const id = `${letters[xi]}${yi + 1}`;
+
+                    // Determine column type
+                    const isCorner = (xi === 0 || xi === xCoords.length - 1) &&
+                        (yi === 0 || yi === yCoords.length - 1);
+                    const isEdge = !isCorner && (xi === 0 || xi === xCoords.length - 1 ||
+                        yi === 0 || yi === yCoords.length - 1);
+
+                    let type = 'interior';
+                    if (isCorner) type = 'corner';
+                    else if (isEdge) type = 'edge';
+
+                    // v2.7: Check if this column existed before and preserve its active state
+                    const oldCol = oldColumns.find(c => c.id === id);
+                    const isActive = oldCol ? oldCol.active : true;  // Preserve or default true
+
+                    state.columns.push({
+                        id,
+                        x: xCoords[xi],
+                        y: yCoords[yi],
+                        xi, yi,
+                        type,
+                        active: isActive,  // v2.7: Preserved toggle state for L/U shapes
+                        loadPerFloor: 0,
+                        totalLoad: 0,
+                        connectedBeams: [] // Will store beam IDs
+                    });
+                }
+            }
+        }
+
+        /**
+         * Step 2: Generate slab panels
+         */
+        // v2.7: Helper to get column by grid indices
+        function getColumnAt(xi, yi) {
+            return state.columns.find(c => c.xi === xi && c.yi === yi);
+        }
+
+        function generateSlabs() {
+            state.slabs = [];
+            const xCoords = [0];
+            for (let span of state.xSpans) xCoords.push(xCoords[xCoords.length - 1] + span);
+            const yCoords = [0];
+            for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
+
+            for (let yi = 0; yi < state.ySpans.length; yi++) {
+                for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    // v2.7: Skip slabs touching any inactive column
+                    const cornerCols = [
+                        getColumnAt(xi, yi),       // top-left
+                        getColumnAt(xi + 1, yi),   // top-right
+                        getColumnAt(xi, yi + 1),   // bottom-left
+                        getColumnAt(xi + 1, yi + 1) // bottom-right
+                    ];
+                    if (cornerCols.some(c => !c || c.active === false)) {
+                        continue; // Skip this slab
+                    }
+
+                    const lx = state.xSpans[xi]; // Short span
+                    const ly = state.ySpans[yi]; // Long span
+
+                    // Check if 2-way (ratio < 2)
+                    const ratio = Math.max(lx, ly) / Math.min(lx, ly);
+                    const isTwoWay = ratio < 2;
+
+                    state.slabs.push({
+                        id: `S${yi * state.xSpans.length + xi + 1}`,
+                        x1: xCoords[xi],
+                        y1: yCoords[yi],
+                        x2: xCoords[xi + 1],
+                        y2: yCoords[yi + 1],
+                        lx, ly,
+                        area: lx * ly,
+                        isTwoWay,
+                        xi, yi
+                    });
+                }
+            }
+        }
+
+        /**
+         * Step 3 & 4: Generate beams and calculate tributary widths
+         * v2.2: Now creates slices per slab with proper 45° math
+         * Short span direction gets MORE load (stiffer)
+         */
+        function generateBeams(pu) {
+            state.beams = [];
+
+            // X-direction beams (horizontal, span in X)
+            const xCoords = [0];
+            for (let span of state.xSpans) xCoords.push(xCoords[xCoords.length - 1] + span);
+            const yCoords = [0];
+            for (let span of state.ySpans) yCoords.push(yCoords[yCoords.length - 1] + span);
+
+            // Letters for column IDs (must match generateGrid)
+            const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+            // Create beam objects with slices array
+            for (let yi = 0; yi < yCoords.length; yi++) {
+                for (let xi = 0; xi < state.xSpans.length; xi++) {
+                    // v2.7: Skip beams where either endpoint column is inactive
+                    const leftCol = getColumnAt(xi, yi);
+                    const rightCol = getColumnAt(xi + 1, yi);
+                    if (!leftCol || !rightCol || leftCol.active === false || rightCol.active === false) {
+                        continue;
+                    }
+
+                    const beamSpan = state.xSpans[xi];
+                    const beamId = `BX-${yi + 1}-${xi + 1}`;
+
+                    state.beams.push({
+                        id: beamId,
+                        direction: 'X',
+                        xi, yi,
+                        x1: xCoords[xi],
+                        y1: yCoords[yi],
+                        x2: xCoords[xi + 1],
+                        y2: yCoords[yi],
+                        span: beamSpan,
+                        // Column connections for load distribution
+                        startCol: `${letters[xi]}${yi + 1}`,
+                        endCol: `${letters[xi + 1]}${yi + 1}`,
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        slices: [],  // v2.2: per-slab slices
+                        w: 0,
+                        Rleft: 0,
+                        Rright: 0
+                    });
+                }
+            }
+
+            // Y-direction beams (along gridlines in X direction)
+            for (let xi = 0; xi < xCoords.length; xi++) {
+                for (let yi = 0; yi < state.ySpans.length; yi++) {
+                    // v2.7: Skip beams where either endpoint column is inactive
+                    const topCol = getColumnAt(xi, yi);
+                    const bottomCol = getColumnAt(xi, yi + 1);
+                    if (!topCol || !bottomCol || topCol.active === false || bottomCol.active === false) {
+                        continue;
+                    }
+
+                    const beamSpan = state.ySpans[yi];
+                    const beamId = `BY-${xi + 1}-${yi + 1}`;
+
+                    state.beams.push({
+                        id: beamId,
+                        direction: 'Y',
+                        xi, yi,
+                        x1: xCoords[xi],
+                        y1: yCoords[yi],
+                        x2: xCoords[xi],
+                        y2: yCoords[yi + 1],
+                        span: beamSpan,
+                        // Column connections for load distribution
+                        startCol: `${letters[xi]}${yi + 1}`,
+                        endCol: `${letters[xi]}${yi + 2}`,
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        slices: [],  // v2.2: per-slab slices
+                        w: 0,
+                        Rleft: 0,
+                        Rright: 0
+                    });
+                }
+            }
+
+            // Map for quick access
+            const beamMap = Object.fromEntries(state.beams.map(beam => [beam.id, beam]));
+
+            // v2.2: Distribute slab areas with proper slices
+            for (let slab of state.slabs) {
+                const topBeamId = `BX-${slab.yi + 1}-${slab.xi + 1}`;
+                const bottomBeamId = `BX-${slab.yi + 2}-${slab.xi + 1}`;
+                const leftBeamId = `BY-${slab.xi + 1}-${slab.yi + 1}`;
+                const rightBeamId = `BY-${slab.xi + 2}-${slab.yi + 1}`;
+
+                // Slab coordinates
+                const x0 = slab.x1, x1 = slab.x2;
+                const y0 = slab.y1, y1 = slab.y2;
+                const cx_mid = (x0 + x1) / 2;
+                const cy_mid = (y0 + y1) / 2;
+
+                // Helper to create polygon and compute centroid
+                function makeSlice(beamId, side, areaSide, poly) {
+                    const beam = beamMap[beamId];
+                    if (!beam) return;
+
+                    const tribWidth = areaSide / beam.span;
+                    const w = pu * tribWidth;
+
+                    // Compute centroid for label placement
+                    let cx = 0, cy = 0;
+                    for (let pt of poly) { cx += pt.x; cy += pt.y; }
+                    cx /= poly.length;
+                    cy /= poly.length;
+
+                    beam.tributaryArea += areaSide;
+                    beam.slices.push({
+                        slabId: slab.id,
+                        side: side,
+                        area: areaSide,
+                        w: w,
+                        poly: poly,
+                        cx: cx,
+                        cy: cy
+                    });
+                }
+
+                if (slab.isTwoWay) {
+                    const h = Math.min(slab.lx, slab.ly) / 2;  // 45° inset height
+
+                    // Provisional areas based on 45° triangular/trapezoidal geometry
+                    const xSideArea_raw = slab.lx * h / 2; // triangle for X-beams (top/bottom)
+                    const trapBase = slab.ly;
+                    const trapTop = slab.ly - 2 * h;
+                    const ySideArea_raw = trapTop > 0
+                        ? (trapBase + trapTop) * h / 2  // trapezoid for Y-beams
+                        : slab.ly * h / 2;              // triangle when lines meet
+
+                    // Normalize so total = slab.area
+                    const rawTotal = 2 * xSideArea_raw + 2 * ySideArea_raw;
+                    const scale = rawTotal > 0 ? slab.area / rawTotal : 0;
+
+                    const A_top = xSideArea_raw * scale;
+                    const A_bottom = xSideArea_raw * scale;
+                    const A_left = ySideArea_raw * scale;
+                    const A_right = ySideArea_raw * scale;
+
+                    // v2.2.1: Proper 45° polygon visualization
+                    // Short span beams get triangles, long span beams get trapezoids
+                    let topPoly, bottomPoly, leftPoly, rightPoly;
+
+                    if (slab.lx <= slab.ly) {
+                        // Short direction = X, so X-beams (top/bottom) get triangles
+                        // Y-beams (left/right) get trapezoids
+
+                        // Top triangle: base at y0, apex at y0 + h
+                        topPoly = [
+                            { x: x0, y: y0 },
+                            { x: x1, y: y0 },
+                            { x: x1 - h, y: y0 + h },
+                            { x: x0 + h, y: y0 + h }
+                        ];
+                        // But wait - this is a trapezoid. For triangle, both ends meet at center
+                        // Actually triangle: corners to center point offset by h
+                        topPoly = [
+                            { x: x0, y: y0 },
+                            { x: x1, y: y0 },
+                            { x: (x0 + x1) / 2, y: y0 + h }  // apex at midpoint, h down
+                        ];
+
+                        // Bottom triangle: base at y1, apex at y1 - h
+                        bottomPoly = [
+                            { x: x0, y: y1 },
+                            { x: x1, y: y1 },
+                            { x: (x0 + x1) / 2, y: y1 - h }
+                        ];
+
+                        // Left trapezoid: base ly, top ly - 2h
+                        leftPoly = [
+                            { x: x0, y: y0 },
+                            { x: x0, y: y1 },
+                            { x: x0 + h, y: y1 - h },
+                            { x: x0 + h, y: y0 + h }
+                        ];
+
+                        // Right trapezoid
+                        rightPoly = [
+                            { x: x1, y: y0 },
+                            { x: x1, y: y1 },
+                            { x: x1 - h, y: y1 - h },
+                            { x: x1 - h, y: y0 + h }
+                        ];
+                    } else {
+                        // Short direction = Y, so Y-beams (left/right) get triangles
+                        // X-beams (top/bottom) get trapezoids
+
+                        // Left triangle: base at x0, apex at x0 + h
+                        leftPoly = [
+                            { x: x0, y: y0 },
+                            { x: x0, y: y1 },
+                            { x: x0 + h, y: (y0 + y1) / 2 }
+                        ];
+
+                        // Right triangle
+                        rightPoly = [
+                            { x: x1, y: y0 },
+                            { x: x1, y: y1 },
+                            { x: x1 - h, y: (y0 + y1) / 2 }
+                        ];
+
+                        // Top trapezoid: base lx, top lx - 2h
+                        topPoly = [
+                            { x: x0, y: y0 },
+                            { x: x1, y: y0 },
+                            { x: x1 - h, y: y0 + h },
+                            { x: x0 + h, y: y0 + h }
+                        ];
+
+                        // Bottom trapezoid
+                        bottomPoly = [
+                            { x: x0, y: y1 },
+                            { x: x1, y: y1 },
+                            { x: x1 - h, y: y1 - h },
+                            { x: x0 + h, y: y1 - h }
+                        ];
+                    }
+
+                    // Add slices with correct areas (NOT equal!)
+                    makeSlice(topBeamId, 'top', A_top, topPoly);
+                    makeSlice(bottomBeamId, 'bottom', A_bottom, bottomPoly);
+                    makeSlice(leftBeamId, 'left', A_left, leftPoly);
+                    makeSlice(rightBeamId, 'right', A_right, rightPoly);
+                } else {
+                    // One-way slab: split into 2 rectangles
+                    const halfArea = slab.area / 2;
+
+                    if (slab.lx < slab.ly) {
+                        // Spanning in Y, supported by left/right beams
+                        const midX = (x0 + x1) / 2;
+                        const leftPoly = [{ x: x0, y: y0 }, { x: midX, y: y0 }, { x: midX, y: y1 }, { x: x0, y: y1 }];
+                        const rightPoly = [{ x: midX, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y1 }, { x: midX, y: y1 }];
+                        makeSlice(leftBeamId, 'left', halfArea, leftPoly);
+                        makeSlice(rightBeamId, 'right', halfArea, rightPoly);
+                    } else {
+                        // Spanning in X, supported by top/bottom beams
+                        const midY = (y0 + y1) / 2;
+                        const topPoly = [{ x: x0, y: y0 }, { x: x1, y: y0 }, { x: x1, y: midY }, { x: x0, y: midY }];
+                        const bottomPoly = [{ x: x0, y: midY }, { x: x1, y: midY }, { x: x1, y: y1 }, { x: x0, y: y1 }];
+                        makeSlice(topBeamId, 'top', halfArea, topPoly);
+                        makeSlice(bottomBeamId, 'bottom', halfArea, bottomPoly);
+                    }
+                }
+            }
+
+            // Finalize tributary widths and loads
+            for (let beam of state.beams) {
+                beam.tributaryWidth = beam.span > 0 ? beam.tributaryArea / beam.span : 0;
+                beam.w = pu * beam.tributaryWidth;
+            }
+        }
+
+        /**
+         * Step 5: Calculate beam reactions
+         * For uniform load: R_left = R_right = w * L / 2
+         */
+        function calculateBeamReactions() {
+            for (let beam of state.beams) {
+                // Simply supported beam with uniform load
+                // R = w * L / 2
+                beam.Rleft = beam.w * beam.span / 2;
+                beam.Rright = beam.w * beam.span / 2;
+            }
+        }
+
+        /**
+         * Step 6: Calculate column loads
+         * Column load = Sum of all beam reactions at that column
+         */
+        function calculateColumnLoads() {
+            // Reset column loads
+            for (let col of state.columns) {
+                col.loadPerFloor = 0;
+                col.connectedBeams = [];
+            }
+
+            // Sum beam reactions to columns
+            for (let beam of state.beams) {
+                // Find columns at beam ends
+                let colLeft, colRight;
+
+                if (beam.direction === 'X') {
+                    // X beam: connects columns at same yi, adjacent xi
+                    colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
+                    colRight = state.columns.find(c => c.xi === beam.xi + 1 && c.yi === beam.yi);
+                } else {
+                    // Y beam: connects columns at same xi, adjacent yi
+                    colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
+                    colRight = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi + 1);
+                }
+
+                if (colLeft) {
+                    colLeft.loadPerFloor += beam.Rleft;
+                    colLeft.connectedBeams.push(beam.id);
+                }
+                if (colRight) {
+                    colRight.loadPerFloor += beam.Rright;
+                    colRight.connectedBeams.push(beam.id);
+                }
+            }
+
+            // Calculate total load (sum across floors, not multiply!)
+            for (let col of state.columns) {
+                // Each floor has same load pattern
+                col.totalLoad = col.loadPerFloor * state.numFloors;
+            }
+        }
+
+        // ========== UI UPDATES ==========
+        function updateResults(pu) {
+            // Total area
+            const totalArea = state.slabs.reduce((sum, s) => sum + s.area, 0);
+            document.getElementById('totalArea').textContent = totalArea.toFixed(1);
+
+            // Beam tributary area check
+            const totalBeamArea = state.beams.reduce((sum, b) => sum + b.tributaryArea, 0);
+            const areaBalance = totalArea > 0 ? (totalBeamArea / totalArea) * 100 : 0;
+            const areaDelta = totalBeamArea - totalArea;
+            const balanceEl = document.getElementById('areaBalance');
+            const balanceDetailEl = document.getElementById('areaBalanceDetail');
+            balanceEl.textContent = `${areaBalance.toFixed(1)}%`;
+            balanceEl.style.color = Math.abs(areaDelta) < 0.01 ? 'var(--success)' : 'var(--warning)';
+            balanceDetailEl.textContent = `${areaDelta.toFixed(2)} m² diff`;
+
+            // Factored load
+            document.getElementById('factoredLoad').textContent = pu.toFixed(2);
+
+            // Total per floor (use current selected floor)
+            const currentFloor = state.floors[state.currentFloorIndex];
+            const totalPerFloor = state.columns.reduce((sum, c) => {
+                const floorLoad = c.floorLoads.find(f => f.floorId === currentFloor.id);
+                return sum + (floorLoad ? floorLoad.load : 0);
+            }, 0);
+            document.getElementById('totalPerFloor').textContent = totalPerFloor.toFixed(0);
+
+            // Max column (total across all floors)
+            const maxCol = state.columns.length
+                ? Math.max(...state.columns.map(c => c.totalLoad))
+                : 0;
+            document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
+
+            // Column table - show current floor load AND total
+            const colBody = document.getElementById('columnResultsBody');
+            colBody.innerHTML = state.columns.map(col => {
+                const floorLoad = col.floorLoads.find(f => f.floorId === currentFloor.id);
+                const thisFloor = floorLoad ? floorLoad.load : 0;
+                return `
+                <tr>
+                    <td><strong>${col.id}</strong></td>
+                    <td style="color:${col.type === 'corner' ? '#f59e0b' : col.type === 'edge' ? '#00d4ff' : '#10b981'}">${col.type}</td>
+                    <td>${thisFloor.toFixed(1)}</td>
+                    <td><strong>${col.totalLoad.toFixed(1)}</strong></td>
+                </tr>
+            `;
+            }).join('');
+
+            // v2.7: Beam table - clickable rows for 3D highlighting
+            const beamBody = document.getElementById('beamResultsBody');
+            beamBody.innerHTML = state.beams.slice(0, 20).map(beam => {
+                const isSelected = state.selectedMemberId === beam.id;
+                return `
+                <tr onclick="selectMember('${beam.id}')" style="cursor:pointer;${isSelected ? 'background:rgba(239,68,68,0.3);' : ''}" title="Click to highlight in 3D">
+                    <td>${beam.id}</td>
+                    <td>${beam.w.toFixed(1)}</td>
+                    <td>${beam.Rleft.toFixed(1)}</td>
+                </tr>
+            `;
+            }).join('');
+        }
+
+        // ========== DRAWING ==========
+
+        // v2.7: Handle canvas click to toggle columns
+        function handleCanvasClick(event) {
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+            const hitSize = 20; // px selection tolerance
+
+            // Find if we clicked on a column
+            const hit = state.columns.find(col => {
+                const x = col.x * state.scale + state.offsetX;
+                const y = col.y * state.scale + state.offsetY;
+                return Math.abs(clickX - x) <= hitSize && Math.abs(clickY - y) <= hitSize;
+            });
+
+            if (hit) {
+                hit.active = !hit.active;
+                calculate(); // Recalculate with updated column state
+                recalculateColumnTypes(); // Update corner/edge/interior types AFTER calculate
+                draw(); // Redraw to show new colors
+            }
+        }
+
+        function draw() {
+            if (!ctx) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw slabs (filled)
+            for (let slab of state.slabs) {
+                const x1 = slab.x1 * state.scale + state.offsetX;
+                const y1 = slab.y1 * state.scale + state.offsetY;
+                const w = slab.lx * state.scale;
+                const h = slab.ly * state.scale;
+
+                // v2.7: MUCH more visible slab - 70% opacity with thick border
+                ctx.fillStyle = 'rgba(20, 40, 60, 0.7)';  // Dark blue-gray fill
+                ctx.fillRect(x1, y1, w, h);
+                ctx.strokeStyle = '#0ea5e9';  // Bright cyan border
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, w, h);
+            }
+
+            // v2.2: Draw slice polygons when Areas is ON
+            if (state.showAreas) {
+                for (let beam of state.beams) {
+                    for (let slice of beam.slices) {
+                        // Draw polygon
+                        ctx.beginPath();
+                        const firstPt = slice.poly[0];
+                        ctx.moveTo(
+                            firstPt.x * state.scale + state.offsetX,
+                            firstPt.y * state.scale + state.offsetY
+                        );
+                        for (let i = 1; i < slice.poly.length; i++) {
+                            const pt = slice.poly[i];
+                            ctx.lineTo(
+                                pt.x * state.scale + state.offsetX,
+                                pt.y * state.scale + state.offsetY
+                            );
+                        }
+                        ctx.closePath();
+
+                        // Color by beam direction
+                        const isXBeam = beam.direction === 'X';
+                        ctx.fillStyle = isXBeam ? 'rgba(124, 58, 237, 0.25)' : 'rgba(16, 185, 129, 0.25)';
+                        ctx.fill();
+                        ctx.strokeStyle = isXBeam ? 'rgba(124, 58, 237, 0.6)' : 'rgba(16, 185, 129, 0.6)';
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+
+                        // Centroid marker and label
+                        const cx = slice.cx * state.scale + state.offsetX;
+                        const cy = slice.cy * state.scale + state.offsetY;
+
+                        // White dot at centroid
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+                        ctx.fillStyle = '#fff';
+                        ctx.fill();
+
+                        // Label at centroid
+                        if (state.showLabels) {
+                            ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                            ctx.fillRect(cx - 32, cy - 18, 64, 22);
+                            ctx.fillStyle = '#00d4ff';
+                            ctx.font = '9px sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(`A=${slice.area.toFixed(1)}m²`, cx, cy - 6);
+                            ctx.fillStyle = '#f59e0b';
+                            ctx.fillText(`w=${slice.w.toFixed(1)}kN/m`, cx, cy + 6);
+                        }
+                    }
+                }
+            }
+
+            // Draw beams
+            ctx.lineWidth = 3;
+            for (let beam of state.beams) {
+                const x1 = beam.x1 * state.scale + state.offsetX;
+                const y1 = beam.y1 * state.scale + state.offsetY;
+                const x2 = beam.x2 * state.scale + state.offsetX;
+                const y2 = beam.y2 * state.scale + state.offsetY;
+
+                ctx.strokeStyle = beam.direction === 'X' ? '#7c3aed' : '#10b981';
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+
+            // Draw columns
+            for (let col of state.columns) {
+                const x = col.x * state.scale + state.offsetX;
+                const y = col.y * state.scale + state.offsetY;
+                const size = 12;
+
+                // v2.7: Draw red X for inactive (disabled) columns
+                if (col.active === false) {
+                    ctx.strokeStyle = '#ef4444'; // Red
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(x - size, y - size);
+                    ctx.lineTo(x + size, y + size);
+                    ctx.moveTo(x - size, y + size);
+                    ctx.lineTo(x + size, y - size);
+                    ctx.stroke();
+
+                    // Show ID label even for inactive
+                    if (state.showLabels) {
+                        ctx.fillStyle = '#ef4444';
+                        ctx.font = '10px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(col.id, x, y - 16);
+                    }
+                    continue; // Skip normal drawing
+                }
+
+                // Color by type (active columns)
+                let color = '#10b981'; // Interior
+                if (col.type === 'corner') color = '#f59e0b';
+                else if (col.type === 'edge') color = '#00d4ff';
+
+                ctx.fillStyle = color;
+                ctx.fillRect(x - size / 2, y - size / 2, size, size);
+
+                // Label
+                if (state.showLabels) {
+                    ctx.fillStyle = '#fff';
+                    ctx.font = '10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(col.id, x, y - 12);
+                    ctx.fillStyle = '#8b949e';
+                    ctx.font = '9px sans-serif';
+                    ctx.fillText(`${col.loadPerFloor.toFixed(0)} kN`, x, y + 20);
+                }
+            }
+        }
+
+        // ========== CONTROLS ==========
+        function zoomIn() {
+            state.scale *= 1.2;
+            draw();
+        }
+
+        function zoomOut() {
+            state.scale /= 1.2;
+            draw();
+        }
+
+        function fitView() {
+            if (state.columns.length === 0) return;
+
+            const maxX = Math.max(...state.columns.map(c => c.x));
+            const maxY = Math.max(...state.columns.map(c => c.y));
+
+            const margin = 150;
+            const scaleX = (canvas.width - margin * 2) / maxX;
+            const scaleY = (canvas.height - margin * 2) / maxY;
+            state.scale = Math.min(scaleX, scaleY, 80);
+
+            state.offsetX = (canvas.width - maxX * state.scale) / 2;
+            state.offsetY = (canvas.height - maxY * state.scale) / 2;
+
+            draw();
+        }
+
+        function toggleLabels() {
+            state.showLabels = !state.showLabels;
+            document.getElementById('toggleLabels').classList.toggle('active', state.showLabels);
+            draw();
+        }
+
+        // v2.2: Toggle Areas visualization
+        function toggleAreas() {
+            state.showAreas = !state.showAreas;
+            const btn = document.getElementById('toggleAreas');
+            if (btn) btn.classList.toggle('active', state.showAreas);
+            draw();
+        }
+
+        // v2.4: Pan tool
+        function togglePan() {
+            state.isPanning = !state.isPanning;
+            const btn = document.getElementById('panTool');
+            if (btn) btn.classList.toggle('active', state.isPanning);
+            canvas.style.cursor = state.isPanning ? 'grab' : 'default';
+        }
+
+        function initPan() {
+            canvas.addEventListener('mousedown', (e) => {
+                if (state.isPanning) {
+                    state.isDragging = true;
+                    state.lastMouseX = e.clientX;
+                    state.lastMouseY = e.clientY;
+                    canvas.style.cursor = 'grabbing';
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (state.isDragging && state.isPanning) {
+                    const dx = e.clientX - state.lastMouseX;
+                    const dy = e.clientY - state.lastMouseY;
+                    state.offsetX += dx;
+                    state.offsetY += dy;
+                    state.lastMouseX = e.clientX;
+                    state.lastMouseY = e.clientY;
+                    draw();
+                }
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                if (state.isDragging) {
+                    state.isDragging = false;
+                    canvas.style.cursor = state.isPanning ? 'grab' : 'default';
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                state.isDragging = false;
+            });
+        }
+
+        function exportResults() {
+            const data = {
+                parameters: {
+                    xSpans: state.xSpans,
+                    ySpans: state.ySpans,
+                    dlSuper: state.dlSuper,
+                    liveLoad: state.liveLoad,
+                    slabThickness: state.slabThickness,
+                    numFloors: state.numFloors
+                },
+                columns: state.columns.map(c => ({
+                    id: c.id,
+                    type: c.type,
+                    loadPerFloor: c.loadPerFloor,
+                    totalLoad: c.totalLoad
+                })),
+                beams: state.beams.map(b => ({
+                    id: b.id,
+                    w: b.w,
+                    R: b.Rleft
+                }))
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'tributary_pro_v2_results.json';
+            a.click();
+        }
+
+        // ========== v2.4: THREE.JS 3D VIEW ==========
+        let scene3D, camera3D, renderer3D, controls3D;
+        let meshes3D = [];
+        let view3DInitialized = false;
+
+        function init3D() {
+            if (view3DInitialized) return;
+
+            const container = document.getElementById('container3D');
+
+            // Scene
+            scene3D = new THREE.Scene();
+            scene3D.background = new THREE.Color(0x0f1419);
+
+            // Camera
+            camera3D = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera3D.position.set(25, 30, 25);
+            camera3D.lookAt(0, 5, 0);
+
+            // Renderer
+            renderer3D = new THREE.WebGLRenderer({ antialias: true });
+            renderer3D.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer3D.domElement);
+
+            // Orbit Controls
+            controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+            controls3D.enableDamping = true;
+            controls3D.dampingFactor = 0.05;
+            controls3D.target.set(0, 5, 0);
+
+            // Lights
+            scene3D.add(new THREE.AmbientLight(0xffffff, 0.5));
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(20, 30, 20);
+            scene3D.add(dirLight);
+
+            // Grid helper
+            const grid = new THREE.GridHelper(50, 20, 0x00d4ff, 0x333333);
+            scene3D.add(grid);
+
+            view3DInitialized = true;
+            animate3D();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            if (controls3D) controls3D.update();
+            if (renderer3D && scene3D && camera3D) {
+                renderer3D.render(scene3D, camera3D);
+            }
+        }
+
+        function render3DFrame() {
+            if (!scene3D) return;
+
+            // Clear previous meshes
+            meshes3D.forEach(m => scene3D.remove(m));
+            meshes3D = [];
+
+            const colSize = 0.3;  // 300mm column
+            const beamW = 0.25;   // 250mm beam width
+            const beamH = 0.5;    // 500mm beam depth
+
+            // Calculate grid bounds for centering
+            const totalX = state.xSpans.reduce((a, b) => a + b, 0);
+            const totalY = state.ySpans.reduce((a, b) => a + b, 0);
+            const offsetX = -totalX / 2;
+            const offsetZ = -totalY / 2;
+
+            // Track cumulative height for proper floor stacking
+            let cumulativeY = 0;
+
+            // For each floor
+            state.floors.forEach((floor, fi) => {
+                const baseY = cumulativeY;  // Use cumulative height, not fi * height
+
+                // COLUMNS - vertical boxes (skip inactive)
+                for (let col of state.columns) {
+                    // v2.7: Skip inactive columns (for L/U layouts)
+                    if (col.active === false) continue;
+
+                    const geo = new THREE.BoxGeometry(colSize, floor.height, colSize);
+
+                    // Column color by type
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: col.type === 'corner' ? 0xf59e0b :
+                            col.type === 'edge' ? 0x00d4ff : 0x10b981
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.position.set(col.x + offsetX, baseY + floor.height / 2, col.y + offsetZ);
+                    scene3D.add(mesh);
+                    meshes3D.push(mesh);
+                }
+
+                // Note: cumulativeY updated at end of forEach iteration
+
+                // BEAMS - at top of each floor (skip if connected to inactive columns)
+                for (let beam of state.beams) {
+                    // v2.7: Skip beams connected to inactive columns
+                    const startCol = state.columns.find(c => c.id === beam.startCol);
+                    const endCol = state.columns.find(c => c.id === beam.endCol);
+                    if ((startCol && startCol.active === false) || (endCol && endCol.active === false)) {
+                        continue;
+                    }
+
+                    const length = Math.sqrt(
+                        Math.pow(beam.x2 - beam.x1, 2) +
+                        Math.pow(beam.y2 - beam.y1, 2)
+                    );
+
+                    // Create beam geometry
+                    const geo = beam.direction === 'X'
+                        ? new THREE.BoxGeometry(length, beamH, beamW)
+                        : new THREE.BoxGeometry(beamW, beamH, length);
+
+                    // Beam color by direction
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: beam.direction === 'X' ? 0x7c3aed : 0x10b981
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+
+                    // Position at midpoint
+                    const mx = (beam.x1 + beam.x2) / 2 + offsetX;
+                    const mz = (beam.y1 + beam.y2) / 2 + offsetZ;
+                    mesh.position.set(mx, baseY + floor.height - beamH / 2, mz);
+
+                    scene3D.add(mesh);
+                    meshes3D.push(mesh);
+                }
+
+                // SLABS - transparent horizontal planes
+                for (let slab of state.slabs) {
+                    const geo = new THREE.PlaneGeometry(slab.lx * 0.95, slab.ly * 0.95);
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: slab.isTwoWay ? 0x00d4ff : 0x7c3aed,
+                        transparent: true,
+                        opacity: 0.15,
+                        side: THREE.DoubleSide
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+                    mesh.rotation.x = -Math.PI / 2;
+                    mesh.position.set(
+                        slab.x1 + slab.lx / 2 + offsetX,
+                        baseY + floor.height + 0.01,
+                        slab.y1 + slab.ly / 2 + offsetZ
+                    );
+                    scene3D.add(mesh);
+                    meshes3D.push(mesh);
+                }
+
+                // Update cumulative height for next floor
+                cumulativeY += floor.height;
+            });
+
+            // v2.6: ELEVATED GF BEAMS - when gfSuspended is checked
+            const elevationHeight = state.gfSuspended
+                ? (parseFloat(document.getElementById('elevationHeight')?.value) || 1.2)
+                : 0;
+
+            if (state.gfSuspended && elevationHeight > 0) {
+                for (let beam of state.beams) {
+                    const length = Math.sqrt(
+                        Math.pow(beam.x2 - beam.x1, 2) +
+                        Math.pow(beam.y2 - beam.y1, 2)
+                    );
+
+                    const geo = beam.direction === 'X'
+                        ? new THREE.BoxGeometry(length, beamH, beamW)
+                        : new THREE.BoxGeometry(beamW, beamH, length);
+
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: 0x22d3ee  // Cyan for elevated GF beams
+                    });
+                    const mesh = new THREE.Mesh(geo, mat);
+
+                    const mx = (beam.x1 + beam.x2) / 2 + offsetX;
+                    const mz = (beam.y1 + beam.y2) / 2 + offsetZ;
+                    // Position at elevation height (below GF floor)
+                    mesh.position.set(mx, elevationHeight - beamH / 2, mz);
+
+                    scene3D.add(mesh);
+                    meshes3D.push(mesh);
+                }
+            }
+
+            // v2.6: FOOTINGS - all leveled at top (same top level, varying thickness)
+            const footingDepth = state.footingDepth;
+            const maxThick = Math.max(...state.columns.map(c => c.footingThick || 0.3));
+
+            for (let col of state.columns) {
+                // v2.7: Skip footings for inactive columns
+                if (col.active === false) continue;
+
+                const size = col.footingSize || 0.8;
+                // Increase thickness for smaller footings so all tops are level
+                const baseThick = col.footingThick || 0.3;
+                const adjustedThick = maxThick;  // All same thickness for level top
+
+                // Footing geometry
+                const geo = new THREE.BoxGeometry(size, adjustedThick, size);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x8b5cf6,  // Purple for footings
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                // Position below ground - all tops at same level
+                const footingTopY = -footingDepth + adjustedThick;
+                mesh.position.set(
+                    col.x + offsetX,
+                    footingTopY - adjustedThick / 2,
+                    col.y + offsetZ
+                );
+                scene3D.add(mesh);
+                meshes3D.push(mesh);
+
+                // Footing pedestal (connecting column to footing)
+                const pedestalGeo = new THREE.BoxGeometry(colSize * 1.2, footingDepth - adjustedThick, colSize * 1.2);
+                const pedestalMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
+                const pedestal = new THREE.Mesh(pedestalGeo, pedestalMat);
+                pedestal.position.set(
+                    col.x + offsetX,
+                    -(footingDepth - adjustedThick) / 2,
+                    col.y + offsetZ
+                );
+                scene3D.add(pedestal);
+                meshes3D.push(pedestal);
+            }
+
+            // v2.8: TIE BEAMS - using calculated sizing from longest span
+            const tieBeamH = state.tieBeamH;  // Calculated: max(longestSpan/10, 0.3m)
+            const tieBeamW = state.tieBeamW;  // Calculated: max(largestFooting, 0.25m)
+            const tieBeamTopY = -footingDepth + maxThick + tieBeamH / 2;  // On top of footings
+
+            for (let beam of state.beams) {
+                const length = Math.sqrt(
+                    Math.pow(beam.x2 - beam.x1, 2) +
+                    Math.pow(beam.y2 - beam.y1, 2)
+                );
+
+                const geo = beam.direction === 'X'
+                    ? new THREE.BoxGeometry(length, tieBeamH, tieBeamW)
+                    : new THREE.BoxGeometry(tieBeamW, tieBeamH, length);
+
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x666666  // Gray for tie beams
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+
+                const mx = (beam.x1 + beam.x2) / 2 + offsetX;
+                const mz = (beam.y1 + beam.y2) / 2 + offsetZ;
+                mesh.position.set(mx, tieBeamTopY, mz);
+
+                scene3D.add(mesh);
+                meshes3D.push(mesh);
+            }
+
+            // Update camera target to center (including footings)
+            const centerY = (state.floors.length * 3) / 2 - footingDepth / 2;
+            controls3D.target.set(0, centerY, 0);
+            camera3D.position.set(totalX * 1.5, centerY + 15, totalY * 1.5);
+        }
+
+        function setView(mode) {
+            const canvas2D = document.getElementById('mainCanvas');
+            const container3D = document.getElementById('container3D');
+            const btn2D = document.getElementById('view2D');
+            const btn3D = document.getElementById('view3D');
+
+            if (mode === '2d') {
+                canvas2D.style.display = 'block';
+                container3D.classList.remove('active');
+                btn2D.classList.add('active');
+                btn3D.classList.remove('active');
+            } else {
+                canvas2D.style.display = 'none';
+                container3D.classList.add('active');
+                btn2D.classList.remove('active');
+                btn3D.classList.add('active');
+
+                if (!view3DInitialized) {
+                    init3D();
+                }
+                render3DFrame();
+
+                // Resize renderer
+                const rect = container3D.getBoundingClientRect();
+                if (renderer3D && rect.width > 0 && rect.height > 0) {
+                    renderer3D.setSize(rect.width, rect.height);
+                    camera3D.aspect = rect.width / rect.height;
+                    camera3D.updateProjectionMatrix();
+                }
+            }
+        }
+
+        // ========== INIT ==========
+        window.onload = function () {
+            initCanvas();
+            initPan();  // v2.4: Pan tool
+            renderSpans();
+            renderFloorTabs();  // v2.3: Render floor tabs
+            calculate();
+            fitView();
+        };
+    </script>
+</body>
+
+</html>
