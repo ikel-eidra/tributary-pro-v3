@@ -1352,12 +1352,11 @@
 
             // v2.8: Calculate uniform tie beam sizing from longest span
             const longestSpan = Math.max(...state.xSpans, ...state.ySpans);
-            const largestFootingWidth = Math.max(...state.columns.filter(c => c.active !== false).map(c => c.footingSize || 0.6));
 
             // Tie beam depth = max(longestSpan/10, 0.3m) - rounded to 50mm
             state.tieBeamH = Math.max(0.3, Math.ceil(longestSpan / 10 * 20) / 20);
-            // Tie beam width = max(largestFooting width, 0.25m) - rounded to 50mm
-            state.tieBeamW = Math.max(0.25, Math.ceil(largestFootingWidth * 20) / 20);
+            // Tie beam width = fixed 250mm (beam-like, not wall-like)
+            state.tieBeamW = 0.25;
 
             console.log(`v2.8: Tie beam sizing - H: ${(state.tieBeamH * 1000).toFixed(0)}mm, W: ${(state.tieBeamW * 1000).toFixed(0)}mm (from longest span ${longestSpan.toFixed(1)}m)`);
         }
