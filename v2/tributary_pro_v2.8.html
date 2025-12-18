@@ -556,6 +556,69 @@
         .canvas-wrapper {
             position: relative;
         }
+
+        /* ========== v3.0: CANTILEVER INPUTS ========== */
+        .cantilever-section {
+            display: grid;
+            gap: 8px;
+        }
+
+        .cantilever-edge {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .cantilever-edge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .cantilever-edge-header label {
+            font-size: 0.7rem;
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .cantilever-spans {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .cantilever-span-input {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+
+        .cantilever-span-input span {
+            font-size: 0.6rem;
+            color: #8b949e;
+            min-width: 20px;
+        }
+
+        .cantilever-span-input input {
+            width: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 4px;
+            color: #fff;
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        .cantilever-span-input input:focus {
+            outline: none;
+            border-color: var(--warning);
+        }
     </style>
 
     <!-- v2.4: Three.js for 3D View -->
@@ -572,6 +635,14 @@
         </div>
         <div class="header-actions">
             <button class="tool-btn" onclick="calculate()">🔄 Calculate</button>
+            <button class="tool-btn" id="addOpeningBtn" onclick="toggleOpeningMode()"
+                title="Click to add opening, then click on canvas">🕳️ Add Opening</button>
+            <select id="openingType"
+                style="padding: 8px; border-radius: 6px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                <option value="stair">🪜 Stair (2.5×3.0m)</option>
+                <option value="elevator">🛗 Elevator (2.0×2.0m)</option>
+                <option value="duct">🔧 Duct (0.6×0.6m)</option>
+            </select>
             <button class="tool-btn" onclick="exportResults()">📤 Export</button>
         </div>
     </header>
@@ -581,16 +652,6 @@
         <!-- ========== LEFT PANEL: INPUTS ========== -->
         <div class="panel">
             <div class="panel-header">📥 Input Parameters</div>
-
-            <!-- Load Path Indicator -->
-            <div class="load-path">
-                <h4>✅ v2.0 Load Path (Correct)</h4>
-                <div class="path">
-                    SLAB <span class="arrow">→</span>
-                    BEAMS <span class="arrow">→</span>
-                    COLUMNS
-                </div>
-            </div>
 
             <!-- Grid Spans -->
             <div class="param-group">
@@ -683,7 +744,59 @@
                             <input type="number" id="floorHeight" value="3.0" step="0.1" min="2.5"
                                 onchange="updateCurrentFloor()">
                         </div>
+                        <div class="param-item">
+                            <label>Wall Load (kN/m) <span style="font-size:0.6rem;color:#f59e0b"
+                                    title="Line load for walls on beams (150mm CHB @3m ≈ 6.0)">ⓘ</span></label>
+                            <input type="number" id="floorWallLoad" value="6.0" step="0.5" min="0"
+                                onchange="updateCurrentFloor()">
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- v3.0: Material Properties for Member Sizing -->
+            <div class="param-group">
+                <h3>🧱 Material & Member Sizing</h3>
+                <div class="param-grid">
+                    <div class="param-item">
+                        <label>f'c (MPa)</label>
+                        <select id="fcInput" onchange="state.fc = parseFloat(this.value); calculate();">
+                            <option value="17">17 MPa</option>
+                            <option value="21" selected>21 MPa</option>
+                            <option value="24">24 MPa</option>
+                            <option value="28">28 MPa</option>
+                            <option value="35">35 MPa</option>
+                        </select>
+                    </div>
+                    <div class="param-item">
+                        <label>fy (MPa)</label>
+                        <select id="fyInput" onchange="state.fy = parseFloat(this.value); calculate();">
+                            <option value="275">Grade 40 (275)</option>
+                            <option value="415" selected>Grade 60 (415)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="param-grid" style="margin-top: 8px;">
+                    <div class="param-item">
+                        <label>Column (mm)</label>
+                        <input type="number" id="columnSizeInput" value="0" min="0" max="600" step="50"
+                            onchange="state.defaultColumnSize = parseInt(this.value); calculate();"
+                            title="0 = Auto (NSCP Pu sizing)">
+                    </div>
+                    <div class="param-item">
+                        <label>Beam b (mm)</label>
+                        <input type="number" id="beamWidthInput" value="250" min="200" max="500" step="25"
+                            onchange="state.defaultBeamB = parseInt(this.value); calculate();">
+                    </div>
+                    <div class="param-item">
+                        <label>Beam h (mm)</label>
+                        <input type="number" id="beamDepthInput" value="0" min="0" max="800" step="50"
+                            onchange="state.defaultBeamH = parseInt(this.value); calculate();"
+                            title="0 = Auto (use L/16 rule)">
+                    </div>
+                </div>
+                <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px;">
+                    💡 Set to 0 for auto-sizing (NSCP rules)
                 </div>
             </div>
 
@@ -703,6 +816,40 @@
                         <label>Soil Bearing (kPa)</label>
                         <input type="number" id="soilBearing" value="150" step="10" min="50" onchange="calculate()">
                     </div>
+                </div>
+            </div>
+
+            <!-- v3.0: Cantilever Configuration -->
+            <div class="param-group">
+                <h3>🏗️ Cantilevers (m)</h3>
+                <div class="cantilever-section">
+                    <div class="cantilever-edge">
+                        <div class="cantilever-edge-header">
+                            <label>↑ Top Edge</label>
+                        </div>
+                        <div class="cantilever-spans" id="cantileverTop"></div>
+                    </div>
+                    <div class="cantilever-edge">
+                        <div class="cantilever-edge-header">
+                            <label>→ Right Edge</label>
+                        </div>
+                        <div class="cantilever-spans" id="cantileverRight"></div>
+                    </div>
+                    <div class="cantilever-edge">
+                        <div class="cantilever-edge-header">
+                            <label>↓ Bottom Edge</label>
+                        </div>
+                        <div class="cantilever-spans" id="cantileverBottom"></div>
+                    </div>
+                    <div class="cantilever-edge">
+                        <div class="cantilever-edge-header">
+                            <label>← Left Edge</label>
+                        </div>
+                        <div class="cantilever-spans" id="cantileverLeft"></div>
+                    </div>
+                </div>
+                <div style="font-size: 0.6rem; color: #8b949e; margin-top: 6px;">
+                    Enter cantilever length per span (0 = no cantilever)
                 </div>
             </div>
 
@@ -779,6 +926,7 @@
                                 <th>Type</th>
                                 <th>Floor (kN)</th>
                                 <th>Total (kN)</th>
+                                <th>Size (mm)</th>
                                 <th>Footing (m)</th>
                             </tr>
                         </thead>
@@ -799,6 +947,7 @@
                                 <th>Beam</th>
                                 <th>w (kN/m)</th>
                                 <th>R (kN)</th>
+                                <th>b×h (mm)</th>
                             </tr>
                         </thead>
                         <tbody id="beamResultsBody">
@@ -824,14 +973,23 @@
             xSpans: [4.0, 4.0],      // X-direction bay sizes (m)
             ySpans: [5.0, 5.0],      // Y-direction bay sizes (m)
 
+            // v3.0: Cantilever configuration per edge span
+            // Each array element = cantilever length for that span index (0 = no cantilever)
+            cantilevers: {
+                top: [0, 0],      // Length matching xSpans - cantilever above first row
+                bottom: [0, 0],   // Length matching xSpans - cantilever below last row
+                left: [0, 0],     // Length matching ySpans - cantilever left of first column
+                right: [0, 0]     // Length matching ySpans - cantilever right of last column
+            },
+
             // v2.3: Floors array - per floor configurations
             // v2.7: Corrected floor logic:
             //   Without GF Suspended: 2F | RF (2 tabs = 2 suspended slabs)
             //   With GF Suspended: GF | 2F | RF (3 tabs = 3 suspended slabs)
             //   GF tab is added dynamically when checkbox is checked
             floors: [
-                { id: '2F', name: '2nd Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, isRoof: false },
-                { id: 'RF', name: 'Roof', dlSuper: 1.5, liveLoad: 1.0, slabThickness: 120, height: 3.0, isRoof: true }
+                { id: '2F', name: '2nd Floor', dlSuper: 2.0, liveLoad: 2.0, slabThickness: 150, height: 3.0, wallLoad: 6.0, isRoof: false },
+                { id: 'RF', name: 'Roof', dlSuper: 1.5, liveLoad: 1.0, slabThickness: 120, height: 3.0, wallLoad: 0, isRoof: true }
             ],
             currentFloorIndex: 0,    // Which floor is selected
 
@@ -861,7 +1019,20 @@
             // v2.8: Tie beam sizing (calculated from longest span)
             // Depth = max(longestSpan/10, 0.3m), Width = max(largestFooting, 0.25m)
             tieBeamH: 0.4,   // m - will be calculated
-            tieBeamW: 0.25   // m - will be calculated
+            tieBeamW: 0.25,  // m - will be calculated
+
+            // v3.0: Material properties for member sizing
+            fc: 21,            // Concrete f'c in MPa (21, 24, 28, 35)
+            fy: 415,           // Steel fy in MPa (275 = Grade 40, 415 = Grade 60)
+            concreteDensity: 24,  // kN/m³ for self-weight calculation
+            defaultColumnSize: 0, // Default column size (mm), 0 = auto (NSCP)
+            defaultBeamB: 250,    // Default beam width (mm), 0 = auto
+            defaultBeamH: 0,      // Default beam depth (mm), 0 = auto (L/16 rule)
+
+            // v3.0: Slab openings (stairs, elevators, ducts)
+            openings: [],          // Array of opening objects
+            addingOpening: false,  // Mode flag for adding openings
+            nextOpeningId: 1       // Counter for unique opening IDs
         };
 
         const MIN_SPAN = 0.25; // m, guard against zero/negative spans
@@ -924,7 +1095,9 @@
         function addSpan(dir) {
             const spans = dir === 'x' ? state.xSpans : state.ySpans;
             spans.push(4.0);
+            syncCantileversToSpans();  // v3.0: Keep cantilever arrays in sync
             renderSpans();
+            renderCantileverInputs();  // v3.0: Re-render cantilever inputs
             calculate();
         }
 
@@ -932,9 +1105,84 @@
             const spans = dir === 'x' ? state.xSpans : state.ySpans;
             if (spans.length > 1) {
                 spans.splice(index, 1);
+                syncCantileversToSpans();  // v3.0: Keep cantilever arrays in sync
                 renderSpans();
+                renderCantileverInputs();  // v3.0: Re-render cantilever inputs
                 calculate();
             }
+        }
+
+        // ========== v3.0: CANTILEVER UI ==========
+
+        // Sync cantilever arrays when spans change
+        function syncCantileversToSpans() {
+            // Top/Bottom match xSpans length
+            while (state.cantilevers.top.length < state.xSpans.length) {
+                state.cantilevers.top.push(0);
+            }
+            while (state.cantilevers.top.length > state.xSpans.length) {
+                state.cantilevers.top.pop();
+            }
+            while (state.cantilevers.bottom.length < state.xSpans.length) {
+                state.cantilevers.bottom.push(0);
+            }
+            while (state.cantilevers.bottom.length > state.xSpans.length) {
+                state.cantilevers.bottom.pop();
+            }
+
+            // Left/Right match ySpans length
+            while (state.cantilevers.left.length < state.ySpans.length) {
+                state.cantilevers.left.push(0);
+            }
+            while (state.cantilevers.left.length > state.ySpans.length) {
+                state.cantilevers.left.pop();
+            }
+            while (state.cantilevers.right.length < state.ySpans.length) {
+                state.cantilevers.right.push(0);
+            }
+            while (state.cantilevers.right.length > state.ySpans.length) {
+                state.cantilevers.right.pop();
+            }
+        }
+
+        // Render cantilever input fields for all 4 edges
+        function renderCantileverInputs() {
+            syncCantileversToSpans();
+
+            // Top edge (follows X spans)
+            renderCantileverEdge('cantileverTop', 'top', state.xSpans, 'X');
+            // Bottom edge (follows X spans)
+            renderCantileverEdge('cantileverBottom', 'bottom', state.xSpans, 'X');
+            // Left edge (follows Y spans)
+            renderCantileverEdge('cantileverLeft', 'left', state.ySpans, 'Y');
+            // Right edge (follows Y spans)
+            renderCantileverEdge('cantileverRight', 'right', state.ySpans, 'Y');
+        }
+
+        function renderCantileverEdge(containerId, edge, spans, axis) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            container.innerHTML = '';
+            const values = state.cantilevers[edge];
+
+            spans.forEach((span, i) => {
+                const inputDiv = document.createElement('div');
+                inputDiv.className = 'cantilever-span-input';
+                inputDiv.innerHTML = `
+                    <span>${axis}${i + 1}</span>
+                    <input type="number" value="${values[i] || 0}" step="0.1" min="0" max="5"
+                           onchange="updateCantilever('${edge}', ${i}, this.value)"
+                           title="Cantilever for ${axis}${i + 1} span (${span}m)">
+                `;
+                container.appendChild(inputDiv);
+            });
+        }
+
+        function updateCantilever(edge, index, value) {
+            const numValue = parseFloat(value) || 0;
+            state.cantilevers[edge][index] = Math.max(0, Math.min(5, numValue));  // Clamp 0-5m
+            calculate();
         }
 
         // ========== v2.3: FLOOR TABS UI ==========
@@ -1100,6 +1348,7 @@
             document.getElementById('floorLL').value = floor.liveLoad;
             document.getElementById('floorSlabThickness').value = floor.slabThickness;
             document.getElementById('floorHeight').value = floor.height;
+            document.getElementById('floorWallLoad').value = floor.wallLoad || 0;
         }
 
         function updateCurrentFloor() {
@@ -1110,6 +1359,7 @@
             floor.liveLoad = parseFloat(document.getElementById('floorLL').value) || 2.0;
             floor.slabThickness = parseFloat(document.getElementById('floorSlabThickness').value) || 150;
             floor.height = parseFloat(document.getElementById('floorHeight').value) || 3.0;
+            floor.wallLoad = parseFloat(document.getElementById('floorWallLoad').value) || 0;
 
             calculate();
         }
@@ -1275,6 +1525,9 @@
             // Step 2: Generate slab panels (same for all floors)
             generateSlabs();
 
+            // v3.0: Apply opening deductions to slabs
+            applyOpeningsToSlabs();
+
             // Reset cumulative column loads
             for (let col of state.columns) {
                 col.loadPerFloor = 0;
@@ -1297,10 +1550,11 @@
                 // Calculate factored load for this floor
                 const slabWeight = 24 * (floor.slabThickness / 1000); // kN/m² = kPa
                 const pu = 1.2 * (floor.dlSuper + slabWeight) + 1.6 * floor.liveLoad;
+                const wallLoad = floor.wallLoad || 0;  // v3.0: Wall load (kN/m)
                 totalPuSum += pu;
 
-                // Generate beams with this floor's pu
-                generateBeams(pu);
+                // Generate beams with this floor's pu and wall load
+                generateBeams(pu, wallLoad);
 
                 // Calculate beam reactions
                 calculateBeamReactions();
@@ -1318,6 +1572,9 @@
             state.footingDepth = parseFloat(document.getElementById('footingDepth').value) || 1.5;
             state.soilBearing = parseFloat(document.getElementById('soilBearing').value) || 150;
             calculateFootingSizes();
+
+            // v3.0: Size all columns and beams
+            sizeMembers();
 
             // Update UI
             updateResults(puDisplay);
@@ -1482,14 +1739,387 @@
                     });
                 }
             }
+
+            // v3.0: Generate cantilever slabs
+            generateCantileverSlabs(xCoords, yCoords);
+        }
+
+        // v3.0: Generate cantilever slab panels extending beyond the grid
+        function generateCantileverSlabs(xCoords, yCoords) {
+            // Top cantilevers (above first row, yi = 0)
+            for (let xi = 0; xi < state.xSpans.length; xi++) {
+                const cantLen = state.cantilevers.top[xi] || 0;
+                if (cantLen > 0) {
+                    const spanWidth = state.xSpans[xi];
+                    state.slabs.push({
+                        id: `SC-T${xi + 1}`,
+                        x1: xCoords[xi],
+                        y1: -cantLen,  // Extends above grid (negative Y)
+                        x2: xCoords[xi + 1],
+                        y2: 0,
+                        lx: spanWidth,
+                        ly: cantLen,
+                        area: spanWidth * cantLen,
+                        isCantilever: true,
+                        cantileverEdge: 'top',
+                        spanIndex: xi,
+                        supportingBeamId: `BX-1-${xi + 1}`  // Top edge beam
+                    });
+                }
+            }
+
+            // Bottom cantilevers (below last row)
+            const maxY = yCoords[yCoords.length - 1];
+            const lastYi = state.ySpans.length;  // Last beam row index
+            for (let xi = 0; xi < state.xSpans.length; xi++) {
+                const cantLen = state.cantilevers.bottom[xi] || 0;
+                if (cantLen > 0) {
+                    const spanWidth = state.xSpans[xi];
+                    state.slabs.push({
+                        id: `SC-B${xi + 1}`,
+                        x1: xCoords[xi],
+                        y1: maxY,
+                        x2: xCoords[xi + 1],
+                        y2: maxY + cantLen,  // Extends below grid
+                        lx: spanWidth,
+                        ly: cantLen,
+                        area: spanWidth * cantLen,
+                        isCantilever: true,
+                        cantileverEdge: 'bottom',
+                        spanIndex: xi,
+                        supportingBeamId: `BX-${lastYi + 1}-${xi + 1}`  // Bottom edge beam
+                    });
+                }
+            }
+
+            // Left cantilevers (left of first column, xi = 0)
+            for (let yi = 0; yi < state.ySpans.length; yi++) {
+                const cantLen = state.cantilevers.left[yi] || 0;
+                if (cantLen > 0) {
+                    const spanHeight = state.ySpans[yi];
+                    state.slabs.push({
+                        id: `SC-L${yi + 1}`,
+                        x1: -cantLen,  // Extends left of grid (negative X)
+                        y1: yCoords[yi],
+                        x2: 0,
+                        y2: yCoords[yi + 1],
+                        lx: cantLen,
+                        ly: spanHeight,
+                        area: cantLen * spanHeight,
+                        isCantilever: true,
+                        cantileverEdge: 'left',
+                        spanIndex: yi,
+                        supportingBeamId: `BY-1-${yi + 1}`  // Left edge beam
+                    });
+                }
+            }
+
+            // Right cantilevers (right of last column)
+            const maxX = xCoords[xCoords.length - 1];
+            const lastXi = state.xSpans.length;  // Last beam column index
+            for (let yi = 0; yi < state.ySpans.length; yi++) {
+                const cantLen = state.cantilevers.right[yi] || 0;
+                if (cantLen > 0) {
+                    const spanHeight = state.ySpans[yi];
+                    state.slabs.push({
+                        id: `SC-R${yi + 1}`,
+                        x1: maxX,
+                        y1: yCoords[yi],
+                        x2: maxX + cantLen,  // Extends right of grid
+                        y2: yCoords[yi + 1],
+                        lx: cantLen,
+                        ly: spanHeight,
+                        area: cantLen * spanHeight,
+                        isCantilever: true,
+                        cantileverEdge: 'right',
+                        spanIndex: yi,
+                        supportingBeamId: `BY-${lastXi + 1}-${yi + 1}`  // Right edge beam
+                    });
+                }
+            }
+        }
+
+        // v3.0: Apply openings to slabs - subtract opening area from affected slabs
+        function applyOpeningsToSlabs() {
+            // Reset opening deductions
+            for (let slab of state.slabs) {
+                slab.openingArea = 0;
+                slab.netArea = slab.area;
+            }
+
+            // For each opening, find overlapping slabs and subtract
+            for (let opening of state.openings) {
+                const ox1 = opening.x - opening.width / 2;
+                const ox2 = opening.x + opening.width / 2;
+                const oy1 = opening.y - opening.depth / 2;
+                const oy2 = opening.y + opening.depth / 2;
+
+                for (let slab of state.slabs) {
+                    // Calculate overlap rectangle
+                    const ix1 = Math.max(ox1, slab.x1);
+                    const iy1 = Math.max(oy1, slab.y1);
+                    const ix2 = Math.min(ox2, slab.x2);
+                    const iy2 = Math.min(oy2, slab.y2);
+
+                    // If there's an overlap
+                    if (ix1 < ix2 && iy1 < iy2) {
+                        const overlapArea = (ix2 - ix1) * (iy2 - iy1);
+                        slab.openingArea += overlapArea;
+                        slab.netArea = slab.area - slab.openingArea;
+                        console.log(`v3.0: Opening ${opening.id} overlaps ${slab.id} by ${overlapArea.toFixed(2)}m²`);
+                    }
+                }
+            }
+
+            // Calculate total opening area for display
+            state.totalOpeningArea = state.openings.reduce((sum, o) => sum + o.width * o.depth, 0);
+        }
+
+        // v3.0: Generate cantilever beams (from columns) and edge beams (at cantilever tips)
+        function generateCantileverBeams(xCoords, yCoords, letters) {
+            const maxX = xCoords[xCoords.length - 1];
+            const maxY = yCoords[yCoords.length - 1];
+
+            // TOP CANTILEVERS: Beams extend from columns at yi=0 upward (negative Y)
+            for (let xi = 0; xi <= state.xSpans.length; xi++) {
+                // Check if any adjacent span has a top cantilever
+                const leftCant = xi > 0 ? (state.cantilevers.top[xi - 1] || 0) : 0;
+                const rightCant = xi < state.xSpans.length ? (state.cantilevers.top[xi] || 0) : 0;
+                const maxCant = Math.max(leftCant, rightCant);
+
+                if (maxCant > 0) {
+                    const col = getColumnAt(xi, 0);
+                    if (col && col.active !== false) {
+                        // Cantilever beam from column to edge
+                        state.beams.push({
+                            id: `BCY-T-${xi + 1}`,
+                            direction: 'Y',
+                            isCantilever: true,
+                            cantileverEdge: 'top',
+                            x1: xCoords[xi],
+                            y1: -maxCant,
+                            x2: xCoords[xi],
+                            y2: 0,
+                            span: maxCant,
+                            startCol: null,  // Free end
+                            endCol: col.id,  // Connected to column
+                            tributaryWidth: 0,
+                            tributaryArea: 0,
+                            slices: [],
+                            w: 0,
+                            Rleft: 0,
+                            Rright: 0
+                        });
+                    }
+                }
+            }
+
+            // TOP EDGE BEAM: Runs along the top edge of cantilever slabs
+            let topEdgeSegments = [];
+            for (let xi = 0; xi < state.xSpans.length; xi++) {
+                const cantLen = state.cantilevers.top[xi] || 0;
+                if (cantLen > 0) {
+                    topEdgeSegments.push({ xi, cantLen });
+                }
+            }
+            for (let seg of topEdgeSegments) {
+                state.beams.push({
+                    id: `BEX-T-${seg.xi + 1}`,
+                    direction: 'X',
+                    isEdgeBeam: true,
+                    cantileverEdge: 'top',
+                    x1: xCoords[seg.xi],
+                    y1: -seg.cantLen,
+                    x2: xCoords[seg.xi + 1],
+                    y2: -seg.cantLen,
+                    span: state.xSpans[seg.xi],
+                    tributaryWidth: 0,
+                    tributaryArea: 0,
+                    slices: [],
+                    w: 0,
+                    Rleft: 0,
+                    Rright: 0
+                });
+            }
+
+            // BOTTOM CANTILEVERS: Beams extend from columns at yi=last downward
+            const lastYi = state.ySpans.length;
+            for (let xi = 0; xi <= state.xSpans.length; xi++) {
+                const leftCant = xi > 0 ? (state.cantilevers.bottom[xi - 1] || 0) : 0;
+                const rightCant = xi < state.xSpans.length ? (state.cantilevers.bottom[xi] || 0) : 0;
+                const maxCant = Math.max(leftCant, rightCant);
+
+                if (maxCant > 0) {
+                    const col = getColumnAt(xi, lastYi);
+                    if (col && col.active !== false) {
+                        state.beams.push({
+                            id: `BCY-B-${xi + 1}`,
+                            direction: 'Y',
+                            isCantilever: true,
+                            cantileverEdge: 'bottom',
+                            x1: xCoords[xi],
+                            y1: maxY,
+                            x2: xCoords[xi],
+                            y2: maxY + maxCant,
+                            span: maxCant,
+                            startCol: col.id,
+                            endCol: null,
+                            tributaryWidth: 0,
+                            tributaryArea: 0,
+                            slices: [],
+                            w: 0,
+                            Rleft: 0,
+                            Rright: 0
+                        });
+                    }
+                }
+            }
+
+            // BOTTOM EDGE BEAM
+            for (let xi = 0; xi < state.xSpans.length; xi++) {
+                const cantLen = state.cantilevers.bottom[xi] || 0;
+                if (cantLen > 0) {
+                    state.beams.push({
+                        id: `BEX-B-${xi + 1}`,
+                        direction: 'X',
+                        isEdgeBeam: true,
+                        cantileverEdge: 'bottom',
+                        x1: xCoords[xi],
+                        y1: maxY + cantLen,
+                        x2: xCoords[xi + 1],
+                        y2: maxY + cantLen,
+                        span: state.xSpans[xi],
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        slices: [],
+                        w: 0,
+                        Rleft: 0,
+                        Rright: 0
+                    });
+                }
+            }
+
+            // LEFT CANTILEVERS: Beams extend from columns at xi=0 leftward
+            for (let yi = 0; yi <= state.ySpans.length; yi++) {
+                const topCant = yi > 0 ? (state.cantilevers.left[yi - 1] || 0) : 0;
+                const bottomCant = yi < state.ySpans.length ? (state.cantilevers.left[yi] || 0) : 0;
+                const maxCant = Math.max(topCant, bottomCant);
+
+                if (maxCant > 0) {
+                    const col = getColumnAt(0, yi);
+                    if (col && col.active !== false) {
+                        state.beams.push({
+                            id: `BCX-L-${yi + 1}`,
+                            direction: 'X',
+                            isCantilever: true,
+                            cantileverEdge: 'left',
+                            x1: -maxCant,
+                            y1: yCoords[yi],
+                            x2: 0,
+                            y2: yCoords[yi],
+                            span: maxCant,
+                            startCol: null,
+                            endCol: col.id,
+                            tributaryWidth: 0,
+                            tributaryArea: 0,
+                            slices: [],
+                            w: 0,
+                            Rleft: 0,
+                            Rright: 0
+                        });
+                    }
+                }
+            }
+
+            // LEFT EDGE BEAM
+            for (let yi = 0; yi < state.ySpans.length; yi++) {
+                const cantLen = state.cantilevers.left[yi] || 0;
+                if (cantLen > 0) {
+                    state.beams.push({
+                        id: `BEY-L-${yi + 1}`,
+                        direction: 'Y',
+                        isEdgeBeam: true,
+                        cantileverEdge: 'left',
+                        x1: -cantLen,
+                        y1: yCoords[yi],
+                        x2: -cantLen,
+                        y2: yCoords[yi + 1],
+                        span: state.ySpans[yi],
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        slices: [],
+                        w: 0,
+                        Rleft: 0,
+                        Rright: 0
+                    });
+                }
+            }
+
+            // RIGHT CANTILEVERS: Beams extend from columns at xi=last rightward
+            const lastXi = state.xSpans.length;
+            for (let yi = 0; yi <= state.ySpans.length; yi++) {
+                const topCant = yi > 0 ? (state.cantilevers.right[yi - 1] || 0) : 0;
+                const bottomCant = yi < state.ySpans.length ? (state.cantilevers.right[yi] || 0) : 0;
+                const maxCant = Math.max(topCant, bottomCant);
+
+                if (maxCant > 0) {
+                    const col = getColumnAt(lastXi, yi);
+                    if (col && col.active !== false) {
+                        state.beams.push({
+                            id: `BCX-R-${yi + 1}`,
+                            direction: 'X',
+                            isCantilever: true,
+                            cantileverEdge: 'right',
+                            x1: maxX,
+                            y1: yCoords[yi],
+                            x2: maxX + maxCant,
+                            y2: yCoords[yi],
+                            span: maxCant,
+                            startCol: col.id,
+                            endCol: null,
+                            tributaryWidth: 0,
+                            tributaryArea: 0,
+                            slices: [],
+                            w: 0,
+                            Rleft: 0,
+                            Rright: 0
+                        });
+                    }
+                }
+            }
+
+            // RIGHT EDGE BEAM
+            for (let yi = 0; yi < state.ySpans.length; yi++) {
+                const cantLen = state.cantilevers.right[yi] || 0;
+                if (cantLen > 0) {
+                    state.beams.push({
+                        id: `BEY-R-${yi + 1}`,
+                        direction: 'Y',
+                        isEdgeBeam: true,
+                        cantileverEdge: 'right',
+                        x1: maxX + cantLen,
+                        y1: yCoords[yi],
+                        x2: maxX + cantLen,
+                        y2: yCoords[yi + 1],
+                        span: state.ySpans[yi],
+                        tributaryWidth: 0,
+                        tributaryArea: 0,
+                        slices: [],
+                        w: 0,
+                        Rleft: 0,
+                        Rright: 0
+                    });
+                }
+            }
         }
 
         /**
          * Step 3 & 4: Generate beams and calculate tributary widths
          * v2.2: Now creates slices per slab with proper 45° math
          * Short span direction gets MORE load (stiffer)
+         * v3.0: Added wallLoad parameter for line loads on beams
          */
-        function generateBeams(pu) {
+        function generateBeams(pu, wallLoad = 0) {
             state.beams = [];
 
             // X-direction beams (horizontal, span in X)
@@ -1566,12 +2196,14 @@
                         slices: [],  // v2.2: per-slab slices
                         w: 0,
                         Rleft: 0,
-                        Rright: 0
                     });
                 }
             }
 
-            // Map for quick access
+            // v3.0: Generate cantilever beams and edge beams
+            generateCantileverBeams(xCoords, yCoords, letters);
+
+            // Map for quick access (now includes cantilever beams)
             const beamMap = Object.fromEntries(state.beams.map(beam => [beam.id, beam]));
 
             // v2.2: Distribute slab areas with proper slices
@@ -1740,29 +2372,163 @@
                 }
             }
 
+            // v3.0: Distribute cantilever slab loads to beams
+            // Load goes to: (1) the main grid edge beam, and (2) the cantilever beams
+            for (let slab of state.slabs.filter(s => s.isCantilever)) {
+                const edge = slab.cantileverEdge;
+                const spanIndex = slab.spanIndex;
+                const slabArea = slab.area;
+
+                // ===== PART 1: Add load to the MAIN GRID EDGE BEAM =====
+                // This is the beam along the grid edge that the cantilever extends from
+                let mainEdgeBeamId;
+                if (edge === 'top') {
+                    // Top cantilever is supported by BX-1-* (first row X-beams)
+                    mainEdgeBeamId = `BX-1-${spanIndex + 1}`;
+                } else if (edge === 'bottom') {
+                    // Bottom cantilever is supported by BX-(lastRow+1)-*
+                    mainEdgeBeamId = `BX-${state.ySpans.length + 1}-${spanIndex + 1}`;
+                } else if (edge === 'left') {
+                    // Left cantilever is supported by BY-1-*
+                    mainEdgeBeamId = `BY-1-${spanIndex + 1}`;
+                } else if (edge === 'right') {
+                    // Right cantilever is supported by BY-(lastCol+1)-*
+                    mainEdgeBeamId = `BY-${state.xSpans.length + 1}-${spanIndex + 1}`;
+                }
+
+                const mainBeam = beamMap[mainEdgeBeamId];
+                if (mainBeam) {
+                    // Add FULL cantilever area to the supporting edge beam
+                    mainBeam.tributaryArea += slabArea;
+                    mainBeam.slices.push({
+                        slabId: slab.id,
+                        side: 'cantilever',
+                        area: slabArea,
+                        w: 0,  // Will be set in finalize
+                        isCantilever: true,
+                        poly: [
+                            { x: slab.x1, y: slab.y1 },
+                            { x: slab.x2, y: slab.y1 },
+                            { x: slab.x2, y: slab.y2 },
+                            { x: slab.x1, y: slab.y2 }
+                        ],
+                        cx: (slab.x1 + slab.x2) / 2,
+                        cy: (slab.y1 + slab.y2) / 2
+                    });
+                }
+
+                // ===== PART 2: Also add load to CANTILEVER BEAMS (perpendicular) =====
+                // These beams share the load with the main beam (for analysis refinement)
+                // Currently keeping this for future moment calculations
+                let cantBeam1Id, cantBeam2Id;
+                if (edge === 'top' || edge === 'bottom') {
+                    const prefix = edge === 'top' ? 'BCY-T' : 'BCY-B';
+                    cantBeam1Id = `${prefix}-${spanIndex + 1}`;
+                    cantBeam2Id = `${prefix}-${spanIndex + 2}`;
+                } else {
+                    const prefix = edge === 'left' ? 'BCX-L' : 'BCX-R';
+                    cantBeam1Id = `${prefix}-${spanIndex + 1}`;
+                    cantBeam2Id = `${prefix}-${spanIndex + 2}`;
+                }
+
+                // Cantilever beams get half the area each (for their own load calc)
+                const halfArea = slabArea / 2;
+                const cantBeam1 = beamMap[cantBeam1Id];
+                const cantBeam2 = beamMap[cantBeam2Id];
+
+                if (cantBeam1) {
+                    cantBeam1.tributaryArea += halfArea;
+                }
+                if (cantBeam2) {
+                    cantBeam2.tributaryArea += halfArea;
+                }
+            }
+
+            // v3.0: Deduct opening areas from beam tributary areas
+            // For each opening, find which beams have slices that overlap
+            for (let opening of state.openings) {
+                const ox1 = opening.x - opening.width / 2;
+                const ox2 = opening.x + opening.width / 2;
+                const oy1 = opening.y - opening.depth / 2;
+                const oy2 = opening.y + opening.depth / 2;
+                const openingArea = opening.width * opening.depth;
+
+                // Find beams whose slices overlap this opening
+                for (let beam of state.beams) {
+                    for (let slice of beam.slices) {
+                        // Get slice bounds from polygon
+                        if (!slice.poly || slice.poly.length < 3) continue;
+
+                        const xs = slice.poly.map(p => p.x);
+                        const ys = slice.poly.map(p => p.y);
+                        const sx1 = Math.min(...xs);
+                        const sx2 = Math.max(...xs);
+                        const sy1 = Math.min(...ys);
+                        const sy2 = Math.max(...ys);
+
+                        // Calculate overlap with opening
+                        const ix1 = Math.max(ox1, sx1);
+                        const iy1 = Math.max(oy1, sy1);
+                        const ix2 = Math.min(ox2, sx2);
+                        const iy2 = Math.min(oy2, sy2);
+
+                        if (ix1 < ix2 && iy1 < iy2) {
+                            const overlapArea = (ix2 - ix1) * (iy2 - iy1);
+                            beam.tributaryArea -= overlapArea;
+                            beam.openingDeduction = (beam.openingDeduction || 0) + overlapArea;
+                        }
+                    }
+                }
+            }
+
             // Finalize tributary widths and loads
             for (let beam of state.beams) {
+                // Ensure tributary area doesn't go negative
+                beam.tributaryArea = Math.max(0, beam.tributaryArea);
                 beam.tributaryWidth = beam.span > 0 ? beam.tributaryArea / beam.span : 0;
-                beam.w = pu * beam.tributaryWidth;
+
+                // v3.0: Add wall load to beam load
+                // Wall load is kN/m, added FACTORED (1.2 × DL)
+                const slabLoad = pu * beam.tributaryWidth;
+                const factoredWallLoad = beam.isCantilever || beam.isEdgeBeam ? 0 : 1.2 * wallLoad;
+                beam.wallLoad = factoredWallLoad;
+                beam.w = slabLoad + factoredWallLoad;
             }
         }
 
         /**
          * Step 5: Calculate beam reactions
          * For uniform load: R_left = R_right = w * L / 2
+         * v3.0: Cantilever beams - all load goes to support column
          */
         function calculateBeamReactions() {
             for (let beam of state.beams) {
-                // Simply supported beam with uniform load
-                // R = w * L / 2
-                beam.Rleft = beam.w * beam.span / 2;
-                beam.Rright = beam.w * beam.span / 2;
+                if (beam.isCantilever) {
+                    // Cantilever beam: all load goes to the support (connected) end
+                    const totalLoad = beam.w * beam.span;
+                    if (beam.startCol) {
+                        beam.Rleft = totalLoad;
+                        beam.Rright = 0;
+                    } else {
+                        beam.Rleft = 0;
+                        beam.Rright = totalLoad;
+                    }
+                } else if (beam.isEdgeBeam) {
+                    // Edge beam: load goes to adjacent cantilever beams (handled separately)
+                    beam.Rleft = beam.w * beam.span / 2;
+                    beam.Rright = beam.w * beam.span / 2;
+                } else {
+                    // Simply supported beam with uniform load: R = w * L / 2
+                    beam.Rleft = beam.w * beam.span / 2;
+                    beam.Rright = beam.w * beam.span / 2;
+                }
             }
         }
 
         /**
          * Step 6: Calculate column loads
          * Column load = Sum of all beam reactions at that column
+         * v3.0: Handles cantilever beams using startCol/endCol IDs
          */
         function calculateColumnLoads() {
             // Reset column loads
@@ -1773,26 +2539,44 @@
 
             // Sum beam reactions to columns
             for (let beam of state.beams) {
-                // Find columns at beam ends
-                let colLeft, colRight;
-
-                if (beam.direction === 'X') {
-                    // X beam: connects columns at same yi, adjacent xi
-                    colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
-                    colRight = state.columns.find(c => c.xi === beam.xi + 1 && c.yi === beam.yi);
+                // v3.0: Cantilever and edge beams use startCol/endCol IDs
+                if (beam.isCantilever || beam.isEdgeBeam) {
+                    if (beam.startCol) {
+                        const col = state.columns.find(c => c.id === beam.startCol);
+                        if (col) {
+                            col.loadPerFloor += beam.Rleft;
+                            col.connectedBeams.push(beam.id);
+                        }
+                    }
+                    if (beam.endCol) {
+                        const col = state.columns.find(c => c.id === beam.endCol);
+                        if (col) {
+                            col.loadPerFloor += beam.Rright;
+                            col.connectedBeams.push(beam.id);
+                        }
+                    }
                 } else {
-                    // Y beam: connects columns at same xi, adjacent yi
-                    colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
-                    colRight = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi + 1);
-                }
+                    // Normal beams: find columns by xi/yi indices
+                    let colLeft, colRight;
 
-                if (colLeft) {
-                    colLeft.loadPerFloor += beam.Rleft;
-                    colLeft.connectedBeams.push(beam.id);
-                }
-                if (colRight) {
-                    colRight.loadPerFloor += beam.Rright;
-                    colRight.connectedBeams.push(beam.id);
+                    if (beam.direction === 'X') {
+                        // X beam: connects columns at same yi, adjacent xi
+                        colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
+                        colRight = state.columns.find(c => c.xi === beam.xi + 1 && c.yi === beam.yi);
+                    } else {
+                        // Y beam: connects columns at same xi, adjacent yi
+                        colLeft = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi);
+                        colRight = state.columns.find(c => c.xi === beam.xi && c.yi === beam.yi + 1);
+                    }
+
+                    if (colLeft) {
+                        colLeft.loadPerFloor += beam.Rleft;
+                        colLeft.connectedBeams.push(beam.id);
+                    }
+                    if (colRight) {
+                        colRight.loadPerFloor += beam.Rright;
+                        colRight.connectedBeams.push(beam.id);
+                    }
                 }
             }
 
@@ -1803,16 +2587,138 @@
             }
         }
 
+        // ========== v3.0: MEMBER SIZING (NSCP 2015) ==========
+
+        /**
+         * Size a column based on axial load (simplified - axial only, no moment)
+         * Formula: Pu ≤ φPn = φ × 0.80 × [0.85 × f'c × (Ag - Ast) + fy × Ast]
+         * Simplified: Ag_required = Pu / (φ × 0.80 × (0.85 × f'c × (1 - ρ) + fy × ρ))
+         * v3.0: If defaultColumnSize > 0, use user-provided size instead of auto
+         * @param {number} Pu_kN - Ultimate axial load in kN
+         * @returns {object} { size: side dimension in mm, Ast: required steel area in mm², isOverride: boolean }
+         */
+        function sizeColumn(Pu_kN) {
+            const phi = 0.65;  // NSCP reduction factor for tied columns
+            const rho = 0.01;  // 1% minimum steel ratio
+            const fc = state.fc;  // MPa
+            const fy = state.fy;  // MPa
+            const Pu = Pu_kN * 1000;  // Convert kN to N
+
+            let side;
+            let isOverride = false;
+
+            // v3.0: Check for user override
+            if (state.defaultColumnSize > 0) {
+                side = state.defaultColumnSize;
+                isOverride = true;
+            } else {
+                // Required gross area (mm²)
+                const Ag_required = Pu / (phi * 0.80 * (0.85 * fc * (1 - rho) + fy * rho));
+
+                // Size as square column, round up to nearest 50mm
+                side = Math.ceil(Math.sqrt(Ag_required) / 50) * 50;
+                side = Math.max(side, 200);  // Minimum 200mm per NSCP
+            }
+
+            // Actual gross area and required steel
+            const Ag_actual = side * side;
+            const Ast = Math.ceil(rho * Ag_actual);
+
+            return { size: side, Ast: Ast, isOverride: isOverride };
+        }
+
+        /**
+         * Size a beam based on span-to-depth ratio (NSCP Table 409.3.1.1)
+         * v3.0: Respects user-provided dimensions when defaultBeamH > 0
+         * @param {number} span_m - Beam span in meters
+         * @param {boolean} isCantilever - Is this a cantilever beam?
+         * @returns {object} { b: width in mm, h: depth in mm }
+         */
+        function sizeBeam(span_m, isCantilever = false) {
+            let b, h;
+
+            // v3.0: If user specified beam depth, use it
+            if (state.defaultBeamH > 0) {
+                h = state.defaultBeamH;
+                b = state.defaultBeamB || 250;
+            } else {
+                // Auto-size using NSCP span-to-depth ratio
+                const L = span_m * 1000;  // Convert to mm
+
+                // Minimum depth per NSCP based on span
+                // Simply supported: L/16, Cantilever: L/8
+                const minDepthRatio = isCantilever ? 8 : 16;
+                h = Math.ceil((L / minDepthRatio) / 50) * 50;  // Round to 50mm
+                h = Math.max(h, 300);  // Minimum 300mm depth
+
+                // Use user-provided width or calculate from depth
+                b = state.defaultBeamB > 0
+                    ? state.defaultBeamB
+                    : Math.max(200, Math.ceil((h * 0.5) / 50) * 50);
+            }
+
+            return { b: b, h: h };
+        }
+
+        /**
+         * Apply sizing to all columns and beams
+         * v3.0: Also calculates self-weight dead load
+         */
+        function sizeMembers() {
+            // Size all columns based on their total load
+            for (let col of state.columns) {
+                if (col.active === false) continue;
+                const sizing = sizeColumn(col.totalLoad);
+                col.suggestedSize = sizing.size;
+                col.suggestedAst = sizing.Ast;
+
+                // v3.0: Calculate column self-weight (per floor)
+                // Volume = side² × height, Weight = γc × Volume
+                const sideM = sizing.size / 1000;  // Convert mm to m
+                const height = state.floors[0]?.height || 3.0;  // Use first floor height
+                col.selfWeight = state.concreteDensity * sideM * sideM * height;  // kN
+            }
+
+            // Size all beams based on their span
+            let totalBeamSelfWeight = 0;
+            for (let beam of state.beams) {
+                const sizing = sizeBeam(beam.span, beam.isCantilever || false);
+                beam.suggestedB = sizing.b;
+                beam.suggestedH = sizing.h;
+
+                // v3.0: Calculate beam self-weight
+                // Volume = b × h × span, Weight = γc × Volume
+                const bM = sizing.b / 1000;  // Convert mm to m
+                const hM = sizing.h / 1000;  // Convert mm to m
+                beam.selfWeight = state.concreteDensity * bM * hM * beam.span;  // kN total
+                beam.selfWeightPerM = state.concreteDensity * bM * hM;  // kN/m
+                totalBeamSelfWeight += beam.selfWeight;
+            }
+
+            // Store total self-weight for display
+            state.totalBeamSelfWeight = totalBeamSelfWeight;
+        }
+
         // ========== UI UPDATES ==========
         function updateResults(pu) {
-            // Total area
-            const totalArea = state.slabs.reduce((sum, s) => sum + s.area, 0);
-            document.getElementById('totalArea').textContent = totalArea.toFixed(1);
+            // v3.0: Total area - use net area (after opening deductions)
+            const grossArea = state.slabs.reduce((sum, s) => sum + s.area, 0);
+            const netArea = state.slabs.reduce((sum, s) => sum + (s.netArea || s.area), 0);
+            const openingArea = state.totalOpeningArea || 0;
 
-            // Beam tributary area check
+            // Show net area (what actually carries load)
+            document.getElementById('totalArea').textContent = netArea.toFixed(1);
+
+            // If there are openings, add a note
+            if (openingArea > 0) {
+                document.getElementById('totalArea').title =
+                    `Gross: ${grossArea.toFixed(1)}m² - Openings: ${openingArea.toFixed(1)}m² = Net: ${netArea.toFixed(1)}m²`;
+            }
+
+            // Beam tributary area check (compare to net area)
             const totalBeamArea = state.beams.reduce((sum, b) => sum + b.tributaryArea, 0);
-            const areaBalance = totalArea > 0 ? (totalBeamArea / totalArea) * 100 : 0;
-            const areaDelta = totalBeamArea - totalArea;
+            const areaBalance = netArea > 0 ? (totalBeamArea / netArea) * 100 : 0;
+            const areaDelta = totalBeamArea - netArea;
             const balanceEl = document.getElementById('areaBalance');
             const balanceDetailEl = document.getElementById('areaBalanceDetail');
             balanceEl.textContent = `${areaBalance.toFixed(1)}%`;
@@ -1836,30 +2742,45 @@
                 : 0;
             document.getElementById('maxColumn').textContent = maxCol.toFixed(0);
 
-            // Column table - show current floor load AND total
+            // Column table - show current floor load, total, AND suggested size
             const colBody = document.getElementById('columnResultsBody');
             colBody.innerHTML = state.columns.map(col => {
                 const floorLoad = col.floorLoads.find(f => f.floorId === currentFloor.id);
                 const thisFloor = floorLoad ? floorLoad.load : 0;
+                const sizeDisplay = col.suggestedSize ? `${col.suggestedSize}×${col.suggestedSize}` : '-';
                 return `
                 <tr>
                     <td><strong>${col.id}</strong></td>
                     <td style="color:${col.type === 'corner' ? '#f59e0b' : col.type === 'edge' ? '#00d4ff' : '#10b981'}">${col.type}</td>
                     <td>${thisFloor.toFixed(1)}</td>
                     <td><strong>${col.totalLoad.toFixed(1)}</strong></td>
+                    <td style="color:#10b981;font-weight:bold">${sizeDisplay}</td>
                 </tr>
             `;
             }).join('');
 
             // v2.7: Beam table - clickable rows for 3D highlighting
+            // v3.0: Show support reaction for cantilever beams + suggested size
             const beamBody = document.getElementById('beamResultsBody');
-            beamBody.innerHTML = state.beams.slice(0, 20).map(beam => {
+            beamBody.innerHTML = state.beams.slice(0, 30).map(beam => {
                 const isSelected = state.selectedMemberId === beam.id;
+                // v3.0: For cantilevers, show the support reaction (non-zero one)
+                const displayR = beam.isCantilever
+                    ? Math.max(beam.Rleft, beam.Rright)
+                    : beam.Rleft;
+                // v3.0: Different styling for cantilever/edge beams
+                const beamStyle = beam.isCantilever
+                    ? 'color:#f59e0b;'
+                    : (beam.isEdgeBeam ? 'color:#ec4899;' : '');
+                // v3.0: Show suggested beam size
+                const sizeDisplay = beam.suggestedB && beam.suggestedH
+                    ? `${beam.suggestedB}×${beam.suggestedH}` : '-';
                 return `
                 <tr onclick="selectMember('${beam.id}')" style="cursor:pointer;${isSelected ? 'background:rgba(239,68,68,0.3);' : ''}" title="Click to highlight in 3D">
-                    <td>${beam.id}</td>
+                    <td style="${beamStyle}">${beam.id}</td>
                     <td>${beam.w.toFixed(1)}</td>
-                    <td>${beam.Rleft.toFixed(1)}</td>
+                    <td>${displayR.toFixed(1)}</td>
+                    <td style="color:#10b981;font-weight:bold">${sizeDisplay}</td>
                 </tr>
             `;
             }).join('');
@@ -1867,16 +2788,94 @@
 
         // ========== DRAWING ==========
 
-        // v2.7: Handle canvas click to toggle columns
+        // v3.0: Toggle opening placement mode
+        function toggleOpeningMode() {
+            state.addingOpening = !state.addingOpening;
+            const btn = document.getElementById('addOpeningBtn');
+            if (state.addingOpening) {
+                btn.style.background = 'var(--warning)';
+                btn.style.color = 'black';
+                canvas.style.cursor = 'crosshair';
+            } else {
+                btn.style.background = '';
+                btn.style.color = '';
+                canvas.style.cursor = 'default';
+            }
+        }
+
+        // v3.0: Place an opening at canvas coordinates
+        function placeOpening(worldX, worldY) {
+            const type = document.getElementById('openingType').value;
+
+            // Default sizes based on type
+            const sizes = {
+                stair: { width: 2.5, depth: 3.0 },
+                elevator: { width: 2.0, depth: 2.0 },
+                duct: { width: 0.6, depth: 0.6 }
+            };
+            const size = sizes[type] || sizes.stair;
+
+            const opening = {
+                id: `O${state.nextOpeningId++}`,
+                x: worldX,           // Center X position (m)
+                y: worldY,           // Center Y position (m)
+                width: size.width,   // Width in X direction (m)
+                depth: size.depth,   // Depth in Y direction (m)
+                type: type
+            };
+
+            state.openings.push(opening);
+            console.log(`v3.0: Added ${type} opening at (${worldX.toFixed(1)}, ${worldY.toFixed(1)})`);
+
+            // Exit opening mode after placing
+            toggleOpeningMode();
+
+            // Recalculate to update areas
+            calculate();
+        }
+
+        // v3.0: Delete opening by ID
+        function deleteOpening(id) {
+            state.openings = state.openings.filter(o => o.id !== id);
+            calculate();
+        }
+
+        // v2.7: Handle canvas click to toggle columns OR place opening
         function handleCanvasClick(event) {
             if (!canvas) return;
 
             const rect = canvas.getBoundingClientRect();
             const clickX = event.clientX - rect.left;
             const clickY = event.clientY - rect.top;
-            const hitSize = 20; // px selection tolerance
 
-            // Find if we clicked on a column
+            // Convert to world coordinates
+            const worldX = (clickX - state.offsetX) / state.scale;
+            const worldY = (clickY - state.offsetY) / state.scale;
+
+            // v3.0: If in opening mode, place opening
+            if (state.addingOpening) {
+                placeOpening(worldX, worldY);
+                return;
+            }
+
+            // v3.0: Check if clicked on an opening (to delete it)
+            const openingHit = state.openings.find(o => {
+                const ox1 = o.x - o.width / 2;
+                const ox2 = o.x + o.width / 2;
+                const oy1 = o.y - o.depth / 2;
+                const oy2 = o.y + o.depth / 2;
+                return worldX >= ox1 && worldX <= ox2 && worldY >= oy1 && worldY <= oy2;
+            });
+
+            if (openingHit) {
+                if (confirm(`Delete opening ${openingHit.id}?`)) {
+                    deleteOpening(openingHit.id);
+                }
+                return;
+            }
+
+            // Original column toggle logic
+            const hitSize = 20; // px selection tolerance
             const hit = state.columns.find(col => {
                 const x = col.x * state.scale + state.offsetX;
                 const y = col.y * state.scale + state.offsetY;
@@ -1885,9 +2884,9 @@
 
             if (hit) {
                 hit.active = !hit.active;
-                calculate(); // Recalculate with updated column state
-                recalculateColumnTypes(); // Update corner/edge/interior types AFTER calculate
-                draw(); // Redraw to show new colors
+                calculate();
+                recalculateColumnTypes();
+                draw();
             }
         }
 
@@ -1903,12 +2902,35 @@
                 const w = slab.lx * state.scale;
                 const h = slab.ly * state.scale;
 
-                // v2.7: MUCH more visible slab - 70% opacity with thick border
-                ctx.fillStyle = 'rgba(20, 40, 60, 0.7)';  // Dark blue-gray fill
-                ctx.fillRect(x1, y1, w, h);
-                ctx.strokeStyle = '#0ea5e9';  // Bright cyan border
-                ctx.lineWidth = 3;
-                ctx.strokeRect(x1, y1, w, h);
+                // v3.0: Special styling for cantilever slabs
+                if (slab.isCantilever) {
+                    ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';  // Orange tint
+                    ctx.fillRect(x1, y1, w, h);
+                    ctx.setLineDash([5, 5]);  // Dashed border
+                    ctx.strokeStyle = '#f59e0b';  // Orange border
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x1, y1, w, h);
+                    ctx.setLineDash([]);  // Reset
+
+                    // Cantilever label
+                    if (state.showLabels) {
+                        const cx = x1 + w / 2;
+                        const cy = y1 + h / 2;
+                        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                        ctx.fillRect(cx - 25, cy - 8, 50, 16);
+                        ctx.fillStyle = '#f59e0b';
+                        ctx.font = '9px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(`C:${slab.area.toFixed(1)}m²`, cx, cy + 3);
+                    }
+                } else {
+                    // v2.7: Normal slab - visible with thick border
+                    ctx.fillStyle = 'rgba(20, 40, 60, 0.7)';  // Dark blue-gray fill
+                    ctx.fillRect(x1, y1, w, h);
+                    ctx.strokeStyle = '#0ea5e9';  // Bright cyan border
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x1, y1, w, h);
+                }
             }
 
             // v2.2: Draw slice polygons when Areas is ON
@@ -2023,6 +3045,39 @@
                     ctx.fillStyle = '#8b949e';
                     ctx.font = '9px sans-serif';
                     ctx.fillText(`${col.loadPerFloor.toFixed(0)} kN`, x, y + 20);
+                }
+            }
+
+            // v3.0: Draw openings
+            for (let opening of state.openings) {
+                const x1 = (opening.x - opening.width / 2) * state.scale + state.offsetX;
+                const y1 = (opening.y - opening.depth / 2) * state.scale + state.offsetY;
+                const w = opening.width * state.scale;
+                const h = opening.depth * state.scale;
+
+                // White fill (void)
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                ctx.fillRect(x1, y1, w, h);
+
+                // Dashed red border
+                ctx.setLineDash([5, 3]);
+                ctx.strokeStyle = '#ef4444';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x1, y1, w, h);
+                ctx.setLineDash([]);
+
+                // Label
+                if (state.showLabels) {
+                    const cx = x1 + w / 2;
+                    const cy = y1 + h / 2;
+                    const emoji = opening.type === 'stair' ? '🪜' : opening.type === 'elevator' ? '🛗' : '🔧';
+
+                    ctx.fillStyle = '#ef4444';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${emoji} ${opening.id}`, cx, cy - 5);
+                    ctx.font = '9px sans-serif';
+                    ctx.fillText(`${opening.width}×${opening.depth}m`, cx, cy + 10);
                 }
             }
         }
@@ -2443,6 +3498,7 @@
             initCanvas();
             initPan();  // v2.4: Pan tool
             renderSpans();
+            renderCantileverInputs();  // v3.0: Render cantilever inputs
             renderFloorTabs();  // v2.3: Render floor tabs
             calculate();
             fitView();
