@@ -1039,27 +1039,23 @@
                 const vertNeighbors = (hasUp ? 1 : 0) + (hasDown ? 1 : 0);
                 const totalNeighbors = horizNeighbors + vertNeighbors;
 
-                // Determine column type
-                if (totalNeighbors === 2 && ((hasLeft && hasUp) || (hasLeft && hasDown) ||
-                    (hasRight && hasUp) || (hasRight && hasDown))) {
-                    // Corner: has exactly 2 neighbors in L-shape
-                    col.type = 'corner';
-                } else if (totalNeighbors <= 1) {
-                    // Extreme corner or isolated (shouldn't happen normally)
-                    col.type = 'corner';
-                } else if (totalNeighbors === 4) {
-                    // Check for re-entrant corners (singit) - diagonal neighbor missing
-                    const isSingit = (!hasUpLeft && hasUp && hasLeft) ||
-                        (!hasUpRight && hasUp && hasRight) ||
-                        (!hasDownLeft && hasDown && hasLeft) ||
-                        (!hasDownRight && hasDown && hasRight);
-                    col.type = isSingit ? 'corner' : 'interior';  // Re-entrant corners get yellow too
+                // Determine column type based on orthogonal neighbors ONLY
+                // Diagonal gaps don't make a column a corner - structural load still goes through orthogonal neighbors
+
+                if (totalNeighbors === 4) {
+                    // Has neighbors on all 4 sides = always interior
+                    col.type = 'interior';
                 } else if (totalNeighbors === 3) {
-                    // Edge column
+                    // Missing 1 orthogonal neighbor = edge column
                     col.type = 'edge';
+                } else if (totalNeighbors === 2) {
+                    // Check if L-shape (corner) or in-line (edge)
+                    const isLShape = (hasLeft && hasUp) || (hasLeft && hasDown) ||
+                        (hasRight && hasUp) || (hasRight && hasDown);
+                    col.type = isLShape ? 'corner' : 'edge';
                 } else {
-                    // 2 neighbors in line (not L-shape) = edge
-                    col.type = 'edge';
+                    // 0 or 1 neighbor = corner (edge case)
+                    col.type = 'corner';
                 }
             }
         }
