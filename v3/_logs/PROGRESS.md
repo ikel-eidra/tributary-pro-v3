@@ -6,6 +6,88 @@ This log tracks ALL changes, tasks, and decisions made to the project.
 
 ---
 
+## January 28, 2026
+
+### 21:05 - 3D Member Labels Added (Task 1.8)
+**Summary:** Added column and beam ID labels to the 3D view.
+
+**Implementation:**
+1.  **`createMemberLabel()` Helper:** Created new function with pill-shaped colored labels.
+2.  **Column Labels:** Orange pills (C1-A1, etc.) positioned 0.5m above column top.
+3.  **Beam Labels:** Purple (X-direction) and green (Y-direction) pills positioned 0.3m above beam.
+4.  **Optimization:** Labels only rendered on first floor to avoid duplicates.
+
+**Files Modified:** `index.html` (lines 8282-8292, 8349-8358, 8557-8610)
+
+---
+
+### 22:00 - Undo/Redo System Implemented (Task 1.10)
+**Summary:** Added full undo/redo functionality with 10-command history.
+
+**Implementation:**
+1.  **External Stacks:** `undoHistory[]` and `redoHistory[]` (max 10 snapshots)
+2.  **Core Functions:** `saveStateSnapshot()`, `undo()`, `redo()`
+3.  **Keyboard Shortcuts:** Ctrl+Z (undo), Ctrl+Y or Ctrl+Shift+Z (redo)
+4.  **State Capture:** Snapshots include floors, xSpans, ySpans, cantilevers, gfSuspended
+
+**Files Modified:** `index.html` (lines 2578-2693, 7557-7564 commented out old handler)
+
+---
+
+## January 23, 2026
+
+### 23:45 - 3D Visualization Enhancements & Bug Fixes
+**Summary:** Major improvements to the 3D view reliability and visual accuracy.
+
+**Fixes Applied:**
+1.  **Rendering Crash Fixed:** Resolved `ReferenceError: beamH is not defined` which prevented beams/slabs from rendering.
+2.  **Calculation Crash Fixed:** calculating `soilBearing` caused a crash due to removed UI element. Added safe fallback.
+3.  **Pedestal Sizing:** Fixed visual bug where pedestals used incorrect hardcoded size (`colSize * 1.2`). Now matches actual column dimensions.
+4.  **Slab Elevation:** Corrected mathematical error where slabs were floating above beams. Now perfectly flush with beam top surface (Y=3.00m).
+5.  **Results Tables:** Restored functionality of "COLUMN LOADS" and "BEAM LOADS" tables.
+
+**New Features:**
+1.  **2D Ground Plane:** Added visual structural grid at Y=0.
+    -   Includes X and Y grid lines.
+    -   Added Bubble Labels (A, B, C... and 1, 2, 3...) using Sprites.
+    -   Added semi-transparent dark ground plane for visual grounding.
+
+**Tomorrow's Workflow Plan (User Directed):**
+1.  **Google Notebook Integration:** Connect for PRD generation (initially via copy-paste).
+2.  **Google Stitch (Sia) Integration:** Connect for UI development using new MCP.
+
+**Current State:**
+-   App is fully functional.
+-   3D View is stable and geometrically accurate.
+-   Ready for next phase of workflow integration.
+
+---
+
+## January 22, 2026
+
+### 07:17 - Session Start: Tribu Enhancement Planning
+**User Requirements:**
+1. Fix 3D view (only columns visible - "poste na lang natira")
+2. Add 2D structural plan as ground plane at Z=0
+3. Add member labels in 3D
+4. Fix slabs (proper thickness, less transparent)
+5. Add rebar calculation for footings (pipeline)
+6. Add punching shear checks for flat slabs (pipeline)
+7. Use actual structural plan for accurate tributary areas
+
+**Analysis Completed:**
+- Three.js v128 loaded via CDN
+- `init3D()` and `render3DFrame()` functions exist
+- Container: `#container3D`
+- Beams/slabs/footings code exists but not rendering
+- No labels currently implemented
+
+**Implementation Plan Created:** See `implementation_plan.md`
+
+**Status:** Awaiting user approval before execution
+
+---
+
 ## January 21, 2026
 
 ### 07:16 - Session Start: Recovery from Gemini 3.0 Revert
@@ -78,7 +160,37 @@ This log tracks ALL changes, tasks, and decisions made to the project.
 
 ---
 
+### 21:34 - Fixed Tabbed Schedule Version
+**Issue:** The v3.8 version with tabbed schedules had a syntax error preventing JavaScript from loading.
+
+**Root Cause Found:**
+- **Extra closing brace `}` at line 10014** (file line ~10014)
+- This was after the `toggleBeamDeleted()` helper function inside `deleteMemberFromMenu()`
+- The extra brace closed the global scope early, causing "Unexpected token 'function'" error
+
+**Fix Applied:**
+```diff
+-            }
+-        }
+-        }    // ← EXTRA BRACE REMOVED
++            }
++        }
+```
+
+**Verification:**
+- `typeof state` = defined ✅
+- `typeof calculate` = defined ✅
+- `state.columns.length` = 9 ✅
+- 3D View renders correctly ✅
+- Tabbed schedules (Column, Beam, Footing, Slab) functional ✅
+- 2D Plan button removed ✅
+
+**Files Updated:**
+- Copied fixed `index_BROKEN_20260121.html` → `index.html`
+
+---
+
 ## Quick Reference
-- **Current Working File:** `index.html` (492KB, Jan 15 version)
+- **Current Working File:** `index.html` (551KB, v3.8 with tabbed schedules)
 - **Backups Location:** `_archive/backups_20260121.zip`
 - **This Log:** `_logs/PROGRESS.md`
