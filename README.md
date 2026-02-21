@@ -43,8 +43,8 @@
 3. No build step required - works offline!
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/tributary-pro.git
-cd tributary-pro
+git clone https://github.com/ikel-eidra/tributary-pro-v3.git
+cd tributary-pro-v3
 # Open v3/index.html in browser
 ```
 
